@@ -1,0 +1,57 @@
+version: "1.0"
+language: "Xylos (Insectoid-Alien Tonal Language)"
+description: "A complex alien language utilizing lingual suction clicks, ejectives, high-pitched vocal tones, and rapid pitch sweeps."
+
+speaker:
+  name: "Xylar Hive-Speaker"
+  base_pitch_hz: 280.0
+  pitch_range_semitones: 18.0
+  vocal_tract_scale: 0.75 # Ultra-compact resonant tract
+  breathiness: 0.02
+  vocal_fry: 0.0
+  growl_roughness: 0.0
+  purr_depth: 0.0
+  default_volume_db: 0.0
+
+utterance:
+  # Syllable 1: Dental Click into Ejective + Close Front Vowel, Tone 55 (High level)
+  - label: "ǀkʼi"
+    prosody:
+      chao_tone: "55" # High flat
+      phonation: "modal"
+    phonemes:
+      - symbol: "click_dental"
+        type: "consonant"
+        duration_ms: 30
+      - symbol: "ejective_k"
+        type: "consonant"
+        duration_ms: 50
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 150
+
+  # Syllable 2: Alveolar Click into Open Front Vowel with Dipping Tone 214
+  - label: "ǃæ"
+    prosody:
+      chao_tone: "214" # Dipping tone
+      phonation: "modal"
+    phonemes:
+      - symbol: "click_alveolar"
+        type: "consonant"
+        duration_ms: 40
+      - symbol: "ae"
+        type: "vowel"
+        duration_ms: 220
+
+  # Syllable 3: Lateral Click into High Whistle Vowel, Falling Tone 51
+  - label: "ǁu"
+    prosody:
+      chao_tone: "51" # High falling tone
+      phonation: "breathy"
+    phonemes:
+      - symbol: "click_lateral"
+        type: "consonant"
+        duration_ms: 35
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 180

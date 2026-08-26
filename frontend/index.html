@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Phonetic Speech Studio | Conlangs, Creature Sounds & Prosody</title>
+    <link rel="stylesheet" href="css/studio.css">
+    <!-- FontAwesome icons for pro audio UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- js-yaml for client-side YAML parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+</head>
+<body>
+    <div class="studio-container">
+        <!-- TOP HEADER BAR -->
+        <header class="studio-header">
+            <div class="header-brand">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-wave-square"></i>
+                </div>
+                <div class="brand-title">
+                    <h1>Universal Phonetic Speech Studio</h1>
+                    <span class="brand-subtitle">Conlangs • Animal Vocalizations • Micro-Prosody & Chao Tones</span>
+                </div>
+            </div>
+
+            <!-- PRESET SELECTOR -->
+            <div class="header-presets">
+                <label for="presetSelect"><i class="fa-solid fa-layer-group"></i> Preset:</label>
+                <select id="presetSelect" class="studio-select">
+                    <option value="" disabled selected>Loading presets...</option>
+                </select>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="header-actions">
+                <button id="btnSynthesize" class="btn btn-primary" title="Synthesize 44.1kHz High-Resolution Audio">
+                    <i class="fa-solid fa-play"></i> Synthesize & Play
+                </button>
+                <button id="btnStop" class="btn btn-secondary" title="Stop Audio Playback">
+                    <i class="fa-solid fa-stop"></i> Stop
+                </button>
+                <button id="btnExportWav" class="btn btn-outline" title="Download 44.1kHz 16-bit WAV File">
+                    <i class="fa-solid fa-download"></i> Export WAV
+                </button>
+                <button id="btnExportYaml" class="btn btn-outline" title="Save YAML Conlang Script">
+                    <i class="fa-solid fa-file-code"></i> Save Script
+                </button>
+                <button id="btnReferenceModal" class="btn btn-icon" title="View Extended IPA & Creature Reference Guide">
+                    <i class="fa-solid fa-book-open"></i> Reference
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN STUDIO BODY -->
+        <main class="studio-main">
+            <!-- LEFT PANEL: TIMELINE & PROSODY CANVASES -->
+            <div class="studio-left-panel">
+                
+                <!-- SPEAKER & GLOBAL CONTROLS BAR -->
+                <section class="studio-card speaker-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-sliders"></i> Speaker & Acoustic Parameters</h2>
+                        <span id="speakerNameBadge" class="badge">Speaker: Default</span>
+                    </div>
+                    <div class="speaker-controls-grid">
+                        <div class="control-item">
+                            <label>Base Pitch (F0): <span id="valBasePitch">140 Hz</span></label>
+                            <input type="range" id="sliderBasePitch" min="60" max="400" value="140" step="1">
+                        </div>
+                        <div class="control-item">
+                            <label>Pitch Range (Chao 1-5): <span id="valPitchRange">12 st</span></label>
+                            <input type="range" id="sliderPitchRange" min="4" max="24" value="12" step="1">
+                        </div>
+                        <div class="control-item">
+                            <label>Vocal Tract Scale: <span id="valTractScale">1.0x (Human)</span></label>
+                            <input type="range" id="sliderTractScale" min="0.6" max="1.6" value="1.0" step="0.02">
+                        </div>
+                        <div class="control-item">
+                            <label>Breathiness: <span id="valBreathiness">5%</span></label>
+                            <input type="range" id="sliderBreathiness" min="0" max="1" value="0.05" step="0.01">
+                        </div>
+                        <div class="control-item">
+                            <label>Vocal Fry / Creak: <span id="valVocalFry">0%</span></label>
+                            <input type="range" id="sliderVocalFry" min="0" max="1" value="0.0" step="0.01">
+                        </div>
+                        <div class="control-item">
+                            <label>Growl Roughness: <span id="valGrowl">0%</span></label>
+                            <input type="range" id="sliderGrowl" min="0" max="1" value="0.0" step="0.01">
+                        </div>
+                        <div class="control-item">
+                            <label>Feline Purr Depth: <span id="valPurr">0%</span></label>
+                            <input type="range" id="sliderPurr" min="0" max="1" value="0.0" step="0.01">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TIMELINE SEQUENCER -->
+                <section class="studio-card timeline-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-timeline"></i> Utterance Timeline Sequencer</h2>
+                        <div class="timeline-actions">
+                            <button id="btnAddSyllable" class="btn btn-sm btn-outline"><i class="fa-solid fa-plus"></i> Add Syllable</button>
+                            <button id="btnClearUtterance" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash-can"></i> Clear</button>
+                        </div>
+                    </div>
+                    <div class="timeline-viewport">
+                        <div id="syllablesContainer" class="syllables-track">
+                            <!-- Dynamically populated syllables -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TONE & PITCH CONTOUR EDITOR CANVAS -->
+                <section class="studio-card pitch-card">
+                    <div class="card-header">
+                        <div class="pitch-header-left">
+                            <h2><i class="fa-solid fa-bezier-curve"></i> Syllable Prosody & Tone Contour Canvas</h2>
+                            <span id="activeSyllableLabel" class="active-syl-badge">Selected: Syllable 1</span>
+                        </div>
+                        <!-- TONE PRESETS -->
+                        <div class="tone-preset-bar">
+                            <span class="preset-label">Chao Tones:</span>
+                            <button class="btn-tone" data-tone="55" title="Mandarin Tone 1 (High Flat)">55 ˉ</button>
+                            <button class="btn-tone" data-tone="35" title="Mandarin Tone 2 (High Rising)">35 ˊ</button>
+                            <button class="btn-tone" data-tone="214" title="Mandarin Tone 3 (Dipping)">214 ˇ</button>
+                            <button class="btn-tone" data-tone="51" title="Mandarin Tone 4 (High Falling)">51 ˋ</button>
+                            <button class="btn-tone" data-tone="33" title="Mid Level">33 ˗</button>
+                            <button class="btn-tone" data-tone="11" title="Deep Low Level">11 ˍ</button>
+                            <button class="btn-tone" data-tone="custom" title="Custom Spline Points">Custom</button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Viewport with Grid -->
+                    <div class="canvas-wrapper">
+                        <canvas id="pitchCanvas" width="800" height="240"></canvas>
+                        <div class="canvas-overlay-info">
+                            <span>Click/Drag points to draw pitch trajectory. Double-click to add point.</span>
+                        </div>
+                    </div>
+
+                    <!-- Syllable Phonation & Dynamics Row -->
+                    <div class="syllable-prosody-row">
+                        <div class="prosody-field">
+                            <label>Phonation Mode:</label>
+                            <select id="selSyllablePhonation" class="studio-select-sm">
+                                <option value="modal">Modal (Normal)</option>
+                                <option value="breathy">Breathy [ạ]</option>
+                                <option value="creaky">Creaky / Fry [a̰]</option>
+                                <option value="ventricular_growl">Ventricular Growl [a᷽]</option>
+                                <option value="feline_purr">Feline Purr [ʬ̃]</option>
+                                <option value="whisper">Whisper [ḁ]</option>
+                                <option value="falsetto">Falsetto [a_falsetto]</option>
+                            </select>
+                        </div>
+                        <div class="prosody-field">
+                            <label>Vibrato Rate (Hz):</label>
+                            <input type="number" id="numVibratoRate" min="0" max="15" step="0.5" value="0">
+                        </div>
+                        <div class="prosody-field">
+                            <label>Vibrato Depth (st):</label>
+                            <input type="number" id="numVibratoDepth" min="0" max="4" step="0.1" value="0">
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT PANEL: CODE EDITOR & REAL-TIME SPECTROGRAM & PALETTE -->
+            <div class="studio-right-panel">
+                
+                <!-- REAL-TIME SPECTROGRAM & FFT VISUALIZER -->
+                <section class="studio-card visualizer-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-chart-line"></i> Real-Time Acoustic Spectrogram</h2>
+                        <div class="visualizer-stats">
+                            <span id="audioDurationText">0.00s</span>
+                            <span id="audioSampleRateText">44.1 kHz</span>
+                        </div>
+                    </div>
+                    <div class="visualizer-wrapper">
+                        <canvas id="spectrogramCanvas" width="600" height="180"></canvas>
+                        <div id="playbackPlayhead" class="playhead"></div>
+                    </div>
+                    <!-- Audio Player Controls -->
+                    <div class="audio-player-bar">
+                        <audio id="audioPlayer" controls></audio>
+                    </div>
+                </section>
+
+                <!-- BI-DIRECTIONAL CODE EDITOR -->
+                <section class="studio-card code-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-code"></i> Conlang Script (YAML / JSON)</h2>
+                        <div class="code-tabs">
+                            <button id="btnTabYaml" class="btn-tab active">YAML</button>
+                            <button id="btnTabJson" class="btn-tab">JSON</button>
+                        </div>
+                    </div>
+                    <div class="code-editor-wrapper">
+                        <textarea id="scriptTextarea" spellcheck="false" placeholder="Loading conlang script..."></textarea>
+                    </div>
+                    <div class="code-status-bar">
+                        <span id="codeSyncStatus"><i class="fa-solid fa-circle-check"></i> Synchronized</span>
+                        <button id="btnFormatCode" class="btn btn-xs btn-outline">Format</button>
+                    </div>
+                </section>
+
+                <!-- PHONETIC & CREATURE SYMBOL PALETTE -->
+                <section class="studio-card palette-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-icons"></i> Phonetic & Creature Sound Palette</h2>
+                        <input type="text" id="paletteSearch" class="palette-search-input" placeholder="Search sounds (e.g. click, growl, a, s)...">
+                    </div>
+                    <div class="palette-tabs">
+                        <button class="palette-tab active" data-cat="all">All</button>
+                        <button class="palette-tab" data-cat="vowel">Vowels</button>
+                        <button class="palette-tab" data-cat="consonant">Consonants</button>
+                        <button class="palette-tab" data-cat="click">Clicks & Ejectives</button>
+                        <button class="palette-tab" data-cat="creature">Creature Sounds</button>
+                    </div>
+                    <div id="paletteChipsContainer" class="palette-chips-grid">
+                        <!-- Populated with 53 symbols from API -->
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+        <!-- MODAL: PHONETIC & EXTENDED IPA REFERENCE GUIDE -->
+        <div id="referenceModal" class="modal-backdrop">
+            <div class="modal-window">
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-book-open"></i> Extended IPA & Creature Bioacoustics Reference</h2>
+                    <button id="btnCloseModal" class="modal-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="reference-section">
+                        <h3>1. Vowels & Resonances</h3>
+                        <p>Standard open/close front/back vowels with $F_1-F_5$ formants (e.g., <code>i</code>, <code>y</code>, <code>e</code>, <code>eps</code> [ɛ], <code>ae</code> [æ], <code>a</code>, <code>schwa</code> [ə], <code>u</code>, <code>o</code>, <code>open_o</code> [ɔ], <code>turn_m</code> [ɯ], <code>nasal_a</code> [ã]).</p>
+                    </div>
+                    <div class="reference-section">
+                        <h3>2. Non-Pulmonic Clicks & Ejectives</h3>
+                        <ul>
+                            <li><code>click_dental</code> [ǀ]: Sharp high "tsk-tsk" suction click.</li>
+                            <li><code>click_alveolar</code> [ǃ]: Hollow, popping alveolar click.</li>
+                            <li><code>click_lateral</code> [ǁ]: Side-tongue suction pop.</li>
+                            <li><code>click_bilabial</code> [ʘ]: Soft lip-smack click.</li>
+                            <li><code>ejective_k</code> [kʼ], <code>ejective_t</code> [tʼ], <code>ejective_p</code> [pʼ]: Glottalic egressive pressure bursts.</li>
+                            <li><code>implosive_b</code> [ɓ], <code>implosive_d</code> [ɗ]: Glottalic ingressive pre-voiced stops.</li>
+                        </ul>
+                    </div>
+                    <div class="reference-section">
+                        <h3>3. Animal & Creature Vocalizations</h3>
+                        <ul>
+                            <li><code>feline_purr</code>: 24.5 Hz rhythmic laryngeal neural twitch gating respiration.</li>
+                            <li><code>feline_growl</code>: Subharmonic ventricular false-cord vibration with deep throat resonance.</li>
+                            <li><code>feline_hiss</code>: High-intensity velic/pharyngeal turbulent jet (3.5–7.5 kHz).</li>
+                            <li><code>canine_snarl</code>: Aggressive lip-curl mucosal flutter (48 Hz) with upper-mid brightness.</li>
+                            <li><code>canine_bark</code>: Chest-impact impulse with rapid pitch decay.</li>
+                            <li><code>canine_whine</code>: High falsetto harmonic series with pitch glides (800–2500 Hz).</li>
+                            <li><code>canine_howl</code>: Sustained resonant fundamental sweep with slow vibrato.</li>
+                        </ul>
+                    </div>
+                    <div class="reference-section">
+                        <h3>4. Chao 5-Level Tones (Mandarin & Tonal Conlangs)</h3>
+                        <p><code>55</code> (High Flat), <code>35</code> (Rising), <code>214</code> (Dipping), <code>51</code> (Falling), <code>33</code> (Mid), <code>11</code> (Deep Base).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="js/webaudio_synth.js"></script>
+    <script src="js/pitch_canvas.js"></script>
+    <script src="js/timeline.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/yaml_sync.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

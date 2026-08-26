@@ -1,0 +1,67 @@
+version: "1.0"
+language: "Kavrok (Canine Pack Alert Signals)"
+description: "Pack communication signals featuring rapid alert chest-barks, mucosal snarls, high whimpering whines, and pitch glides."
+
+speaker:
+  name: "Garrow Alpha"
+  base_pitch_hz: 220.0
+  pitch_range_semitones: 16.0
+  vocal_tract_scale: 1.15 # Elongated canine muzzle resonance
+  breathiness: 0.05
+  vocal_fry: 0.10
+  growl_roughness: 0.30
+  purr_depth: 0.0
+  default_volume_db: 0.0
+
+utterance:
+  # Syllable 1: Sudden Alert Chest Bark
+  - label: "ʔʷɔk!"
+    prosody:
+      chao_tone: "51" # Sharp drop
+      phonation: "modal"
+    phonemes:
+      - symbol: "canine_bark"
+        type: "creature"
+        duration_ms: 120
+      - symbol: "open_o"
+        type: "vowel"
+        duration_ms: 80
+      - symbol: "k"
+        type: "consonant"
+        duration_ms: 40
+
+  # Syllable 2: Aggressive Lip-curl Snarl
+  - label: "r_snarl-a"
+    prosody:
+      chao_tone: "33" # Sustained menacing tone
+      phonation: "modal"
+    phonemes:
+      - symbol: "canine_snarl"
+        type: "creature"
+        intensity: 0.90
+        rate_hz: 48.0
+        duration_ms: 220
+      - symbol: "ae"
+        type: "vowel"
+        duration_ms: 120
+
+  # Syllable 3: High Falsetto Whimper Glide
+  - label: "wiːː"
+    prosody:
+      phonation: "falsetto"
+      pitch_curve:
+        - [0.0, 950]   # High start
+        - [0.4, 1600]  # Rising sweep
+        - [0.8, 1200]
+        - [1.0, 700]   # Downward whimper
+      volume_envelope:
+        - [0.0, -10.0]
+        - [0.3, 0.0]
+        - [1.0, -14.0]
+    phonemes:
+      - symbol: "canine_whine"
+        type: "creature"
+        duration_ms: 200
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 180
