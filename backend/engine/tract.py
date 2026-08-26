@@ -1,7 +1,7 @@
 """
 Continuous Time-Varying Vocal Tract Formant Filter & Cursive Coarticulation Engine.
 Generates seamless formant trajectories (F1-F5) across phonemes and syllables (cursive blending),
-preserving continuous filter states and applying acoustic body warmth.
+preserving continuous filter states, soft-tissue wall damping, and acoustic body warmth.
 """
 
 import numpy as np
@@ -47,12 +47,12 @@ def compute_continuous_formant_trajectories(
     sample_rate: int,
     vocal_tract_scale: float = 1.0,
     cursive_blend_ratio: float = 0.45,
+    fleshiness: float = 0.70,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Constructs continuous sample-by-sample formant (5 x N) and bandwidth (5 x N)
     trajectories using smooth S-curve (cosine) transitions between phonemes (Cursive Coarticulation).
-    
-    cursive_blend_ratio: 0.0 = hard steps, 1.0 = maximum cursive blending.
+    Fleshiness expands bandwidths to prevent metallic resonance ringing.
     """
     total_samples = sum(p["num_samples"] for p in phoneme_sequence)
     if total_samples <= 0:
@@ -61,6 +61,9 @@ def compute_continuous_formant_trajectories(
     formant_matrix = np.zeros((5, total_samples), dtype=np.float64)
     bw_matrix = np.zeros((5, total_samples), dtype=np.float64)
     nasal_envelope = np.zeros(total_samples, dtype=np.float64)
+
+    # Bandwidth damping multiplier based on soft tissue fleshiness
+    bw_flesh_factor = 1.0 + (0.55 * fleshiness)
 
     # 1. First pass: establish steady-state targets and boundary transition intervals
     current_sample = 0
@@ -71,11 +74,12 @@ def compute_continuous_formant_trajectories(
         sym = seg["symbol"]
         n_samp = seg["num_samples"]
         fmts, bws, is_nasal = get_phoneme_formant_target(sym, vocal_tract_scale)
+        damped_bws = [bw * bw_flesh_factor for bw in bws]
 
         seg_starts.append((current_sample, current_sample + n_samp))
         seg_targets.append({
             "formants": fmts,
-            "bandwidths": bws,
+            "bandwidths": damped_bws,
             "nasal": 1.0 if is_nasal else 0.0,
             "symbol": sym,
             "is_glottal_stop": (sym in ["glottal_stop", "ʔ", "q_glottal"])
@@ -87,7 +91,6 @@ def compute_continuous_formant_trajectories(
 
     for i in range(num_segs):
         start_idx, end_idx = seg_starts[i]
-        n_samp = end_idx - start_idx
         tgt = seg_targets[i]
 
         # Fill default steady state
@@ -111,7 +114,7 @@ def compute_continuous_formant_trajectories(
         # Transition duration based on cursive blend ratio (typical 30ms - 80ms)
         curr_len = curr_end - seg_starts[i][0]
         next_len = next_end - next_start
-        max_trans = min(curr_len // 2, next_len // 2, int(0.080 * sample_rate))
+        max_trans = min(curr_len // 2, next_len // 2, int(0.085 * sample_rate))
         trans_samples = max(2, int(max_trans * cursive_blend_ratio))
 
         if trans_samples < 2:
@@ -146,20 +149,23 @@ def apply_continuous_formant_filter(
     bw_matrix: np.ndarray,
     nasal_envelope: np.ndarray,
     sample_rate: int,
-    warmth: float = 0.35,
+    warmth: float = 0.40,
+    fleshiness: float = 0.70,
 ) -> np.ndarray:
     """
-    Applies continuous time-varying formant filtering using overlapping smooth frame blocks
-    (hop size = 64 samples ~= 1.45ms) with zero state-reset clicks,
-    followed by body resonance and warmth coloring.
+    Applies continuous time-varying formant filtering with soft mucosal wall damping,
+    anti-metallic de-ringing, subglottal tracheal coupling, and organic chest warmth.
     """
     num_samples = len(excitation_audio)
     if num_samples == 0:
         return excitation_audio
 
     # Filter parameters
-    hop_size = 64  # ~1.45ms at 44.1kHz for ultra-smooth time variance
-    formant_gains = [1.0, 0.65, 0.35, 0.18, 0.08]
+    hop_size = 48  # ~1.08ms at 44.1kHz for ultra-smooth time variance
+    
+    # Formant relative gains (F1 strongest, smooth organic roll-off)
+    flesh_tilt = 1.0 + 0.5 * fleshiness
+    formant_gains = [1.0, 0.55 / flesh_tilt, 0.28 / (flesh_tilt**2), 0.12 / (flesh_tilt**3), 0.05 / (flesh_tilt**4)]
 
     filtered_output = np.zeros(num_samples, dtype=np.float64)
 
@@ -179,7 +185,7 @@ def apply_continuous_formant_filter(
 
         for f_idx in range(5):
             f_res = max(40.0, min(formant_matrix[f_idx, mid_idx], nyquist - 120.0))
-            bw = max(20.0, min(bw_matrix[f_idx, mid_idx], nyquist / 2.0))
+            bw = max(30.0, min(bw_matrix[f_idx, mid_idx], nyquist / 2.0))
 
             # Compute biquad resonator coefficients
             omega = 2.0 * np.pi * f_res / sample_rate
@@ -196,31 +202,38 @@ def apply_continuous_formant_filter(
         nasal_val = nasal_envelope[mid_idx]
         if nasal_val > 0.01:
             omega_n = 2.0 * np.pi * 260.0 / sample_rate
-            r_n = np.exp(-np.pi * 80.0 / sample_rate)
+            r_n = np.exp(-np.pi * 90.0 / sample_rate)
             a_n = np.array([1.0, -2.0 * r_n * np.cos(omega_n), r_n * r_n], dtype=np.float64)
             b0_n = (1.0 - r_n) * np.sin(omega_n)
             b_n = np.array([b0_n, 0.0, -b0_n], dtype=np.float64)
 
             n_wave, zi_nasal = signal.lfilter(b_n, a_n, exc_chunk, zi=zi_nasal)
-            chunk_out = chunk_out * (1.0 - 0.3 * nasal_val) + n_wave * (0.5 * nasal_val)
+            chunk_out = chunk_out * (1.0 - 0.3 * nasal_val) + n_wave * (0.45 * nasal_val)
 
         filtered_output[i : i + chunk_len] = chunk_out
 
-    # 4. Lip Radiation Impedance Model (1st-order highpass differentiator)
-    b_rad = np.array([1.0, -0.92], dtype=np.float64)
+    # 4. Lip Radiation Impedance Model
+    b_rad = np.array([1.0, -0.88], dtype=np.float64)
     a_rad = np.array([1.0], dtype=np.float64)
     radiated = signal.lfilter(b_rad, a_rad, filtered_output)
 
-    # 5. Acoustic Chest/Body Warmth & Harmonic Saturation
+    # 5. Anti-Metallic De-Ringing & Soft Tissue Loss Filter
+    if fleshiness > 0.0:
+        # Soft tissue 2nd-order Bessel lowpass filter (gentle phase, no metallic ringing)
+        cut_freq = 2400.0 + (1.0 - fleshiness) * 3200.0
+        b_soft, a_soft = signal.bessel(2, min(cut_freq / nyquist, 0.92), btype="low")
+        radiated = signal.lfilter(b_soft, a_soft, radiated)
+
+    # 6. Subglottal Coupling & Chest Body Warmth
     if warmth > 0.0:
-        # Chest cavity sub-resonance (~140-240 Hz)
-        b_warmth, a_warmth = signal.butter(2, [min(110.0 / nyquist, 0.8), min(260.0 / nyquist, 0.9)], btype="band")
+        # Chest cavity sub-resonance (~130-240 Hz)
+        b_warmth, a_warmth = signal.butter(2, [min(110.0 / nyquist, 0.8), min(250.0 / nyquist, 0.9)], btype="band")
         chest_body = signal.lfilter(b_warmth, a_warmth, radiated)
 
-        # Soft-knee analog tube saturation for natural warmth
-        drive = 1.0 + warmth * 1.5
+        # Soft-knee analog tube saturation for natural vocal fold warmth
+        drive = 1.0 + warmth * 1.8
         saturated = np.tanh(radiated * drive) / drive
 
-        radiated = saturated * (1.0 - warmth * 0.25) + chest_body * (warmth * 0.35)
+        radiated = saturated * (1.0 - warmth * 0.20) + chest_body * (warmth * 0.40)
 
     return radiated.astype(np.float32)

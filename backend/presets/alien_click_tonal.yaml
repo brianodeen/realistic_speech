@@ -13,6 +13,7 @@ speaker:
   purr_depth: 0.0
   cursive_flow: 0.80
   acoustic_warmth: 0.25
+  fleshiness: 0.60
   default_volume_db: 0.0
 
 utterance:

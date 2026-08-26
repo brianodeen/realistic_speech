@@ -78,6 +78,7 @@ class SpeakerProfile(BaseModel):
     purr_depth: float = Field(default=0.0, description="Global feline purr gating depth (0.0 to 1.0)")
     cursive_flow: float = Field(default=0.85, description="Continuous cursive syllable/phoneme coarticulation blending (0.0 to 1.0)")
     acoustic_warmth: float = Field(default=0.40, description="Chest body warmth & analog saturation (0.0 to 1.0)")
+    fleshiness: float = Field(default=0.70, description="Soft tissue damping, viscoelastic return phase, and anti-metallic smoothing (0.0 to 1.0)")
     default_volume_db: float = Field(default=0.0, description="Master volume trim in dB")
 
 

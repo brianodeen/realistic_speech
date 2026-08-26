@@ -39,6 +39,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
     speaker = script.speaker
     cursive_flow = getattr(speaker, "cursive_flow", 0.85)
     acoustic_warmth = getattr(speaker, "acoustic_warmth", 0.40)
+    fleshiness = getattr(speaker, "fleshiness", 0.70)
 
     # 1. Flatten utterance into a continuous phoneme timeline
     phoneme_sequence = []
@@ -147,6 +148,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
         sample_rate=sample_rate,
         vocal_tract_scale=speaker.vocal_tract_scale,
         cursive_blend_ratio=cursive_flow,
+        fleshiness=fleshiness,
     )
 
     # 4. Generate Continuous Glottal Source Waveform (Preserves Continuous Phase!)
@@ -159,6 +161,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
         breathiness=speaker.breathiness,
         vocal_fry=speaker.vocal_fry,
         growl_roughness=speaker.growl_roughness,
+        fleshiness=fleshiness,
     )
 
     # 5. Composite Multi-Track Excitation (Injects unvoiced bursts, clicks, frication, and creature modulations)
@@ -260,6 +263,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
         nasal_envelope=nasal_env,
         sample_rate=sample_rate,
         warmth=acoustic_warmth,
+        fleshiness=fleshiness,
     )
 
     # 7. Apply Dynamic Volume Envelope

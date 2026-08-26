@@ -128,6 +128,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("sliderWarmth").value = spk.acoustic_warmth !== undefined ? spk.acoustic_warmth : 0.40;
         document.getElementById("valWarmth").textContent = `${Math.round((spk.acoustic_warmth !== undefined ? spk.acoustic_warmth : 0.40) * 100)}%`;
 
+        document.getElementById("sliderFleshiness").value = spk.fleshiness !== undefined ? spk.fleshiness : 0.70;
+        document.getElementById("valFleshiness").textContent = `${Math.round((spk.fleshiness !== undefined ? spk.fleshiness : 0.70) * 100)}%`;
+
         document.getElementById("speakerNameBadge").textContent = `Speaker: ${spk.name || "Default"}`;
 
         pitchCanvas.setSpeaker(spk.base_pitch_hz, spk.pitch_range_semitones);
@@ -159,6 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindSlider("sliderPurr", "valPurr", v => `${Math.round(v * 100)}%`, "purr_depth");
     bindSlider("sliderCursiveFlow", "valCursiveFlow", v => `${Math.round(v * 100)}%`, "cursive_flow");
     bindSlider("sliderWarmth", "valWarmth", v => `${Math.round(v * 100)}%`, "acoustic_warmth");
+    bindSlider("sliderFleshiness", "valFleshiness", v => `${Math.round(v * 100)}%`, "fleshiness");
 
     // 5. Bind Tone Preset Buttons
     document.querySelectorAll(".btn-tone").forEach(btn => {
