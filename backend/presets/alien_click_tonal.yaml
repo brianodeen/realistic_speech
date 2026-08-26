@@ -11,6 +11,8 @@ speaker:
   vocal_fry: 0.0
   growl_roughness: 0.0
   purr_depth: 0.0
+  cursive_flow: 0.80
+  acoustic_warmth: 0.25
   default_volume_db: 0.0
 
 utterance:

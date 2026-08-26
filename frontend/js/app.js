@@ -122,6 +122,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("sliderPurr").value = spk.purr_depth || 0.0;
         document.getElementById("valPurr").textContent = `${Math.round((spk.purr_depth || 0.0) * 100)}%`;
 
+        document.getElementById("sliderCursiveFlow").value = spk.cursive_flow !== undefined ? spk.cursive_flow : 0.85;
+        document.getElementById("valCursiveFlow").textContent = `${Math.round((spk.cursive_flow !== undefined ? spk.cursive_flow : 0.85) * 100)}%`;
+
+        document.getElementById("sliderWarmth").value = spk.acoustic_warmth !== undefined ? spk.acoustic_warmth : 0.40;
+        document.getElementById("valWarmth").textContent = `${Math.round((spk.acoustic_warmth !== undefined ? spk.acoustic_warmth : 0.40) * 100)}%`;
+
         document.getElementById("speakerNameBadge").textContent = `Speaker: ${spk.name || "Default"}`;
 
         pitchCanvas.setSpeaker(spk.base_pitch_hz, spk.pitch_range_semitones);
@@ -151,6 +157,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindSlider("sliderVocalFry", "valVocalFry", v => `${Math.round(v * 100)}%`, "vocal_fry");
     bindSlider("sliderGrowl", "valGrowl", v => `${Math.round(v * 100)}%`, "growl_roughness");
     bindSlider("sliderPurr", "valPurr", v => `${Math.round(v * 100)}%`, "purr_depth");
+    bindSlider("sliderCursiveFlow", "valCursiveFlow", v => `${Math.round(v * 100)}%`, "cursive_flow");
+    bindSlider("sliderWarmth", "valWarmth", v => `${Math.round(v * 100)}%`, "acoustic_warmth");
 
     // 5. Bind Tone Preset Buttons
     document.querySelectorAll(".btn-tone").forEach(btn => {
