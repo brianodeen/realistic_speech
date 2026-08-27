@@ -4,9 +4,9 @@ description: "Pack communication signals featuring rapid alert chest-barks, muco
 
 speaker:
   name: "Garrow Alpha"
-  base_pitch_hz: 220.0
-  pitch_range_semitones: 16.0
-  vocal_tract_scale: 1.15 # Elongated canine muzzle resonance
+  base_pitch_hz: 135.0
+  pitch_range_semitones: 14.0
+  vocal_tract_scale: 1.05
   breathiness: 0.05
   vocal_fry: 0.10
   growl_roughness: 0.30

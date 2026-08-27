@@ -22,6 +22,8 @@ from .bioacoustics import (
     synthesize_canine_snarl,
     synthesize_canine_bark,
     synthesize_canine_whine,
+    synthesize_click_burst,
+    synthesize_ejective_burst,
 )
 
 
@@ -176,20 +178,20 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
         seg_end = min(total_samples, curr_samp + n_samp)
         actual_dur = seg_end - curr_samp
 
-        # --- A. Clicks ---
+        # --- A. Clicks (Human Velaric Ingressives [kǀ], [kǃ], [kǁ], [ʘ]) ---
         if "click" in sym or (p_obj.manner == "click"):
-            click_info = CONSONANT_TABLE.get(sym, CONSONANT_TABLE["click_alveolar"])
-            peak_hz = click_info.get("click_peak_hz", 2200)
-            click_samples = min(actual_dur, int((click_info.get("click_duration_ms", 12) / 1000.0) * sample_rate))
+            click_wave = synthesize_click_burst(sym, actual_dur, sample_rate)
+            # Velar closure silence followed by explosive click burst
+            composite_excitation[curr_samp:seg_end] *= 0.05
+            composite_excitation[curr_samp:seg_end] += click_wave
 
-            impulse = np.random.randn(click_samples) * np.linspace(1.0, 0.0, click_samples)
-            b, a = signal.butter(2, [max(100.0, peak_hz - 500) / (sample_rate / 2), min(sample_rate / 2 - 100, peak_hz + 800) / (sample_rate / 2)], btype="band")
-            click_res = signal.lfilter(b, a, impulse)
-            # Suppress glottal source during click suction and inject click burst
-            composite_excitation[curr_samp:curr_samp + click_samples] = click_res * 2.0
+        # --- B. Ejectives & Plosives ([kʼ], [tʼ], [pʼ]) ---
+        elif "ejective" in sym or (p_obj.manner == "ejective"):
+            ej_wave = synthesize_ejective_burst(sym, actual_dur, sample_rate)
+            composite_excitation[curr_samp:seg_end] *= 0.05
+            composite_excitation[curr_samp:seg_end] += ej_wave
 
-        # --- B. Ejectives & Plosives ---
-        elif "ejective" in sym or (p_obj.manner in ["ejective", "plosive"]):
+        elif p_obj.manner == "plosive":
             c_info = CONSONANT_TABLE.get(sym, {})
             burst_hz = c_info.get("burst_freq", 2200)
             burst_dur = min(actual_dur, int((c_info.get("burst_duration_ms", 16) / 1000.0) * sample_rate))
@@ -201,7 +203,6 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
                 burst_filtered = signal.lfilter(b, a, burst_noise) * 1.4
 
                 if not is_voiced:
-                    # Silence closure then burst
                     composite_excitation[curr_samp:seg_end] *= 0.05
                     composite_excitation[curr_samp:curr_samp + burst_dur] += burst_filtered
                 else:

@@ -242,30 +242,40 @@ def synthesize_click_burst(
     sample_rate: int,
 ) -> np.ndarray:
     """
-    Physically synthesizes an authentic lingual suction click (dental [ǀ], alveolar [ǃ],
-    lateral [ǁ], or bilabial [ʘ]) as an impulse suction pop and cavitation burst.
+    Physically synthesizes an authentic human velaric suction click (dental [kǀ], alveolar [kǃ],
+    lateral [kǁ], or bilabial [ʘ]) as an explosive suction pop with sharp [k]-like release.
     """
     sym = symbol.lower().strip()
     peak_freq_map = {
-        "click_dental": 4800.0, "ǀ": 4800.0,
-        "click_alveolar": 1600.0, "ǃ": 1600.0,
-        "click_lateral": 2800.0, "ǁ": 2800.0,
-        "click_bilabial": 950.0, "ʘ": 950.0,
+        "click_dental": 4200.0, "ǀ": 4200.0,
+        "click_alveolar": 2200.0, "ǃ": 2200.0,
+        "click_lateral": 3100.0, "ǁ": 3100.0,
+        "click_bilabial": 1100.0, "ʘ": 1100.0,
     }
-    peak_hz = peak_freq_map.get(sym, 2200.0)
-    burst_samples = min(duration_samples, int(0.018 * sample_rate))
-    
-    # Asymmetric suction impulse: rapid cavitation spike followed by dampening
-    t_burst = np.linspace(0.0, 1.0, burst_samples)
-    impulse = np.exp(-t_burst * 22.0) * np.sin(2.0 * np.pi * peak_hz * (t_burst * burst_samples / sample_rate))
-    noise_burst = np.random.randn(burst_samples) * np.exp(-t_burst * 16.0)
-    
-    nyq = sample_rate / 2.0
-    b_click, a_click = signal.butter(2, [max(120.0, peak_hz - 600) / nyq, min(nyq - 100, peak_hz + 900) / nyq], btype="band")
-    filtered_click = signal.lfilter(b_click, a_click, impulse * 0.8 + noise_burst * 0.4)
+    cav_hz = peak_freq_map.get(sym, 2800.0)
+    burst_samples = min(duration_samples, int(0.025 * sample_rate))
     
     output = np.zeros(duration_samples, dtype=np.float32)
-    output[:burst_samples] = filtered_click * 1.5
+    if burst_samples <= 0:
+        return output
+
+    t = np.linspace(0.0, 1.0, burst_samples)
+    
+    # 1. Sharp velar acoustic shockwave impulse (sharp 'k' click strike at t=0)
+    velar_spike = np.exp(-t * 28.0) * np.sin(2.0 * np.pi * 2600.0 * (t * burst_samples / sample_rate))
+    
+    # 2. Lingual suction cavity cavitation pop
+    cavitation_pop = np.exp(-t * 18.0) * np.sin(2.0 * np.pi * cav_hz * (t * burst_samples / sample_rate))
+    
+    # 3. High-pressure air turbulence burst
+    noise = np.random.randn(burst_samples) * np.exp(-t * 16.0)
+    nyq = sample_rate / 2.0
+    b_bp, a_bp = signal.butter(2, [max(150.0, cav_hz - 500) / nyq, min(nyq - 100, cav_hz + 1200) / nyq], btype="band")
+    filtered_noise = signal.lfilter(b_bp, a_bp, noise)
+    
+    # Composite click waveform
+    click_wave = velar_spike * 1.2 + cavitation_pop * 0.9 + filtered_noise * 0.5
+    output[:burst_samples] = click_wave * 1.8
     return output
 
 
@@ -275,24 +285,29 @@ def synthesize_ejective_burst(
     sample_rate: int,
 ) -> np.ndarray:
     """
-    Physically synthesizes a glottalized ejective burst ([kʼ], [tʼ], [pʼ]).
+    Physically synthesizes a glottalized ejective burst ([kʼ], [tʼ], [pʼ])
+    with sharp glottic pressure release.
     """
     sym = symbol.lower().strip()
     freq_map = {
-        "ejective_k": 2400.0, "kʼ": 2400.0,
-        "ejective_t": 3900.0, "tʼ": 3900.0,
-        "ejective_p": 1200.0, "pʼ": 1200.0,
+        "ejective_k": 2600.0, "kʼ": 2600.0,
+        "ejective_t": 4100.0, "tʼ": 4100.0,
+        "ejective_p": 1300.0, "pʼ": 1300.0,
     }
-    burst_hz = freq_map.get(sym, 2400.0)
-    burst_samples = min(duration_samples, int(0.022 * sample_rate))
-    
-    t_burst = np.linspace(0.0, 1.0, burst_samples)
-    impulse = np.random.randn(burst_samples) * np.exp(-t_burst * 14.0)
-    
-    nyq = sample_rate / 2.0
-    b_ej, a_ej = signal.butter(2, [max(100.0, burst_hz - 400) / nyq, min(nyq - 100, burst_hz + 800) / nyq], btype="band")
-    filtered_burst = signal.lfilter(b_ej, a_ej, impulse) * 1.6
+    burst_hz = freq_map.get(sym, 2600.0)
+    burst_samples = min(duration_samples, int(0.030 * sample_rate))
     
     output = np.zeros(duration_samples, dtype=np.float32)
-    output[:burst_samples] = filtered_burst
+    if burst_samples <= 0:
+        return output
+
+    t = np.linspace(0.0, 1.0, burst_samples)
+    spike = np.exp(-t * 24.0) * np.sin(2.0 * np.pi * burst_hz * (t * burst_samples / sample_rate))
+    noise = np.random.randn(burst_samples) * np.exp(-t * 18.0)
+    
+    nyq = sample_rate / 2.0
+    b_ej, a_ej = signal.butter(2, [max(120.0, burst_hz - 400) / nyq, min(nyq - 100, burst_hz + 800) / nyq], btype="band")
+    filtered_burst = signal.lfilter(b_ej, a_ej, noise)
+    
+    output[:burst_samples] = (spike * 1.3 + filtered_burst * 0.7) * 1.6
     return output

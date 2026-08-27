@@ -6,7 +6,7 @@ speaker:
   name: "Vakkar Shadow-Stalker"
   base_pitch_hz: 135.0
   pitch_range_semitones: 14.0
-  vocal_tract_scale: 0.88 # Slightly compact feline vocal tract
+  vocal_tract_scale: 0.98
   breathiness: 0.08
   vocal_fry: 0.15
   growl_roughness: 0.40

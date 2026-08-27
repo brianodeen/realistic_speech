@@ -36,7 +36,6 @@ from .articulatory import CONSONANT_TABLE, CREATURE_TABLE
 
 SAMPLE_RATE = 44100
 
-# Set of physical symbols that must NEVER be sent as text words to Neural TTS
 CLICK_SYMBOLS = {"click_dental", "click_alveolar", "click_lateral", "click_bilabial", "ǀ", "ǃ", "ǁ", "ʘ"}
 EJECTIVE_SYMBOLS = {"ejective_k", "ejective_t", "ejective_p", "kʼ", "tʼ", "pʼ"}
 GLOTTAL_SYMBOLS = {"glottal_stop", "ʔ", "q_glottal"}
@@ -79,9 +78,8 @@ def is_pure_physical_sound(symbol: str) -> bool:
 def extract_vocalic_text(syllable: Syllable) -> str:
     """
     Extracts only the true pronounceable vocalic/consonantal phonemes from a syllable,
-    stripping out click, ejective, glottal, and creature tokens so TTS never pronounces code names.
+    translating phonetic symbols into human words/syllables without ever reading code names.
     """
-    # 1. Clean explicit labels if present
     lbl = (syllable.label or "").strip()
     clean_label_map = {
         "wiː": "We", "wi": "We",
@@ -92,11 +90,12 @@ def extract_vocalic_text(syllable: Syllable) -> str:
         "mɛˀ": "Mẹ", "əːj": "ơi", "sɨəˀ": "sữa", "kaː": "cá",
         "qal": "Qal", "xab": "khab", "ruːħ": "rooh",
         "Oooommm": "Ohm", "Aaaa-eeee": "Ah-ee",
+        "kǀi": "Kee", "kǃa": "Kah", "kǁu": "Koo",
+        "ǀkʼi": "Kee", "ǃæ": "Kah", "ǃa": "Kah", "ǁu": "Koo",
     }
     if lbl in clean_label_map:
         return clean_label_map[lbl]
 
-    # 2. Translate individual phoneme symbols into phonetic spelling
     symbol_to_phonetic = {
         "i": "ee", "e": "ay", "epsilon": "eh", "a": "ah", "open_o": "aw",
         "o": "oh", "u": "oo", "schwa": "uh", "ae": "a", "nasal_a": "ahn",
@@ -106,17 +105,25 @@ def extract_vocalic_text(syllable: Syllable) -> str:
         "gamma": "gh", "h": "h", "j": "y", "w": "w"
     }
 
+    has_click_or_ejective = any(
+        is_pure_physical_sound(p.symbol) and p.type != "creature" for p in syllable.phonemes
+    )
+
     vocal_parts = []
     for p in syllable.phonemes:
         sym = p.symbol.lower().strip()
-        # Ignore clicks, ejectives, creature sounds, glottal stops
         if is_pure_physical_sound(sym) or p.type == "creature":
             continue
         if sym in symbol_to_phonetic:
             vocal_parts.append(symbol_to_phonetic[sym])
 
     text = "".join(vocal_parts).strip()
-    return text.capitalize() if text else ""
+    if text:
+        # If this syllable has a click/ejective with only vowels, add sharp velar onset 'k'
+        if has_click_or_ejective and not any(text.lower().startswith(c) for c in ["k", "t", "p", "c", "q"]):
+            text = "k" + text
+        return text.capitalize()
+    return ""
 
 
 async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset: float = 0.0) -> np.ndarray:
@@ -189,9 +196,9 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
             cat = p_first.category or sym
 
             if "click" in sym or sym in CLICK_SYMBOLS:
-                phys_audio = synthesize_click_burst(sym, int(0.040 * sample_rate), sample_rate)
+                phys_audio = synthesize_click_burst(sym, int(0.035 * sample_rate), sample_rate)
             elif "ejective" in sym or sym in EJECTIVE_SYMBOLS:
-                phys_audio = synthesize_ejective_burst(sym, int(0.050 * sample_rate), sample_rate)
+                phys_audio = synthesize_ejective_burst(sym, int(0.045 * sample_rate), sample_rate)
             elif cat == "feline_purr" or sym == "feline_purr":
                 phys_audio = synthesize_feline_purr(n_samples, sample_rate, rate_hz=p_first.rate_hz or 24.5, depth=p_first.intensity or 0.90)
             elif cat == "feline_growl" or sym == "feline_growl":
@@ -205,16 +212,18 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
             elif cat == "canine_whine" or sym == "canine_whine":
                 phys_audio = synthesize_canine_whine(n_samples, sample_rate, base_f0=base_f0)
             elif sym in GLOTTAL_SYMBOLS:
-                phys_audio = np.zeros(int(0.030 * sample_rate), dtype=np.float32)
+                phys_audio = np.zeros(int(0.025 * sample_rate), dtype=np.float32)
             else:
                 phys_audio = synthesize_feline_growl(n_samples, sample_rate, base_f0=base_f0)
 
-            # If there is also a vocalic sound in this syllable (e.g. click + vowel [ǀkʼi]), blend them!
+            # If there is also a vocalic sound in this syllable (e.g. click + vowel [kǀi]), blend seamlessly!
             if vocal_text:
                 vowel_audio = await synthesize_neural_text_async(vocal_text, voice_id, pitch_hz_offset=0.0)
                 if len(vowel_audio) > 0:
-                    # Prepend click/ejective burst to the neural vowel
-                    syl_audio = np.concatenate([phys_audio, vowel_audio])
+                    # Layer the physical click burst right onto the attack of the vowel onset (integrated coarticulation!)
+                    blend_len = min(len(phys_audio), len(vowel_audio))
+                    syl_audio = np.copy(vowel_audio)
+                    syl_audio[:blend_len] = syl_audio[:blend_len] * 0.35 + phys_audio[:blend_len] * 1.2
                 else:
                     syl_audio = phys_audio
             else:
