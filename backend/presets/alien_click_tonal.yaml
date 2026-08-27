@@ -4,16 +4,16 @@ description: "A complex alien language utilizing lingual suction clicks, ejectiv
 
 speaker:
   name: "Xylar Hive-Speaker"
-  base_pitch_hz: 280.0
-  pitch_range_semitones: 18.0
-  vocal_tract_scale: 0.75 # Ultra-compact resonant tract
+  base_pitch_hz: 175.0
+  pitch_range_semitones: 14.0
+  vocal_tract_scale: 0.98
   breathiness: 0.02
   vocal_fry: 0.0
   growl_roughness: 0.0
   purr_depth: 0.0
   cursive_flow: 0.80
-  acoustic_warmth: 0.25
-  fleshiness: 0.60
+  acoustic_warmth: 0.35
+  fleshiness: 0.65
   default_volume_db: 0.0
 
 utterance:
