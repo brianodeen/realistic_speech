@@ -1,6 +1,7 @@
 """
 FastAPI Backend Server for Universal Phonetic Speech Studio.
-Provides REST APIs for script synthesis, presets, and symbol reference metadata.
+Provides REST APIs for script synthesis (Neural-Bioacoustic Hybrid and High-Definition DSP modes),
+presets, and symbol reference metadata.
 """
 
 import os
@@ -14,7 +15,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .engine import ConlangScript, synthesize_script, audio_to_wav_bytes, get_all_symbols_metadata
+from .engine import (
+    ConlangScript,
+    synthesize_script,
+    synthesize_neural_script,
+    synthesize_neural_script_async,
+    audio_to_wav_bytes,
+    get_all_symbols_metadata,
+)
 
 
 app = FastAPI(
@@ -38,6 +46,7 @@ PRESETS_DIR = os.path.join(os.path.dirname(__file__), "presets")
 class SynthesizeRequest(BaseModel):
     script_yaml: Optional[str] = None
     script_json: Optional[Dict[str, Any]] = None
+    engine_mode: Optional[str] = "neural"  # 'neural' (Ultra-Realistic Hybrid) or 'dsp' (Parametric DSP)
 
 
 @app.get("/api/health")
@@ -79,6 +88,7 @@ async def list_presets():
 async def synthesize_endpoint(req: SynthesizeRequest):
     """
     Synthesizes speech from either YAML string or JSON object.
+    Supports 'neural' (Ultra-Realistic Neural-Bioacoustic Hybrid) and 'dsp' (Parametric DSP) modes.
     Returns base64 WAV audio and telemetry.
     """
     try:
@@ -90,7 +100,18 @@ async def synthesize_endpoint(req: SynthesizeRequest):
             raise HTTPException(status_code=400, detail="Must provide script_yaml or script_json")
 
         script = ConlangScript(**data)
-        audio, telemetry = synthesize_script(script)
+
+        # Select synthesis engine mode
+        mode = (req.engine_mode or "neural").lower()
+        if mode == "neural":
+            try:
+                audio, telemetry = await synthesize_neural_script_async(script)
+            except Exception as e:
+                print(f"[Neural Fallback to DSP] {e}")
+                audio, telemetry = synthesize_script(script)
+        else:
+            audio, telemetry = synthesize_script(script)
+
         wav_bytes = audio_to_wav_bytes(audio)
         b64_audio = base64.b64encode(wav_bytes).decode("utf-8")
 
@@ -115,7 +136,15 @@ async def synthesize_wav_direct(req: SynthesizeRequest):
             raise HTTPException(status_code=400, detail="Must provide script_yaml or script_json")
 
         script = ConlangScript(**data)
-        audio, _ = synthesize_script(script)
+        mode = (req.engine_mode or "neural").lower()
+        if mode == "neural":
+            try:
+                audio, _ = await synthesize_neural_script_async(script)
+            except Exception:
+                audio, _ = synthesize_script(script)
+        else:
+            audio, _ = synthesize_script(script)
+
         wav_bytes = audio_to_wav_bytes(audio)
         return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:

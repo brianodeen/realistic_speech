@@ -323,6 +323,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 11. Synthesis & Audio Playback Execution
     async function executeSynthesis() {
         const btn = document.getElementById("btnSynthesize");
+        const engineMode = document.getElementById("selectEngineMode")?.value || "neural";
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Synthesizing...`;
 
@@ -330,7 +331,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const res = await fetch("/api/synthesize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ script_json: currentScript })
+                body: JSON.stringify({
+                    script_json: currentScript,
+                    engine_mode: engineMode
+                })
             });
 
             if (!res.ok) {
@@ -374,11 +378,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 12. Export Actions
     document.getElementById("btnExportWav").addEventListener("click", async () => {
+        const engineMode = document.getElementById("selectEngineMode")?.value || "neural";
         try {
             const res = await fetch("/api/synthesize/wav", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ script_json: currentScript })
+                body: JSON.stringify({
+                    script_json: currentScript,
+                    engine_mode: engineMode
+                })
             });
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);

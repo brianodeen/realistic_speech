@@ -156,13 +156,6 @@ def generate_glottal_source(
     else:
         source_audio = glottal_pulses
 
-    # 9. Fleshy Spectral Tilt (Roll off metallic high harmonics)
-    if fleshiness > 0.1:
-        # 1st order soft-tissue damping lowpass shelf at 2.8kHz - 4.2kHz
-        tilt_cutoff = 1800.0 + (1.0 - fleshiness) * 2800.0
-        b_tilt, a_tilt = signal.butter(1, min(tilt_cutoff / (sample_rate / 2.0), 0.95), btype="low")
-        source_audio = signal.lfilter(b_tilt, a_tilt, source_audio)
-
-    # Normalize source
+    # 9. Natural Glottal Normalization
     max_val = np.max(np.abs(source_audio)) + 1e-6
     return (source_audio / max_val).astype(np.float32)

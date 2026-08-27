@@ -24,11 +24,17 @@
                 </div>
             </div>
 
-            <!-- PRESET SELECTOR -->
+            <!-- PRESET SELECTOR & ENGINE MODE -->
             <div class="header-presets">
                 <label for="presetSelect"><i class="fa-solid fa-layer-group"></i> Preset:</label>
                 <select id="presetSelect" class="studio-select">
                     <option value="" disabled selected>Loading presets...</option>
+                </select>
+
+                <label for="selectEngineMode" style="margin-left: 12px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Engine:</label>
+                <select id="selectEngineMode" class="studio-select">
+                    <option value="neural" selected>✨ Studio Neural-Bioacoustic (Ultra-Realistic)</option>
+                    <option value="dsp">⚡ Physical DSP Resonator (Wideband)</option>
                 </select>
             </div>
 
