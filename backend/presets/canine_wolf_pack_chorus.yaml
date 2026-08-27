@@ -1,0 +1,91 @@
+version: "1.0"
+language: "Canine & Wolf Pack Vocalizations"
+description: "Canine communication suite: Low territorial warning snarl, short explosive warning barks, sweeping pack howl, and whimpering whine."
+
+speaker:
+  name: "Timber Wolf (Alpha Male)"
+  base_pitch_hz: 140.0
+  pitch_range_semitones: 22.0
+  vocal_tract_scale: 1.12 # Large canine muzzle
+  breathiness: 0.08
+  vocal_fry: 0.15
+  growl_roughness: 0.45
+  purr_depth: 0.0
+  cursive_flow: 0.88
+  acoustic_warmth: 0.48
+  fleshiness: 0.72
+  default_volume_db: 0.0
+
+utterance:
+  # 1. Territorial Threat Snarl: "Grrr-rk"
+  - label: "Snarl"
+    duration_ms: 650
+    prosody:
+      phonation: "ventricular_growl"
+      pitch_curve:
+        - [0.0, 110.0]
+        - [0.6, 125.0]
+        - [1.0, 95.0]
+    phonemes:
+      - symbol: "canine_snarl"
+        type: "creature"
+        intensity: 0.90
+        rate_hz: 48.0
+        duration_ms: 550
+      - symbol: "k"
+        type: "consonant"
+        duration_ms: 100
+
+  # 2. Warning Impact Chest Bark: "Wuff!"
+  - label: "Bark"
+    duration_ms: 280
+    prosody:
+      phonation: "modal"
+    phonemes:
+      - symbol: "canine_bark"
+        type: "creature"
+        duration_ms: 280
+
+  # 3. Soaring Melodic Pack Howl: "Awooooːː"
+  - label: "Howl"
+    duration_ms: 1800
+    prosody:
+      pitch_curve:
+        - [0.0, 180.0]
+        - [0.25, 420.0] # Soaring high crest
+        - [0.70, 390.0]
+        - [1.0, 220.0]
+      phonation: "modal"
+      vibrato_rate_hz: 5.5
+      vibrato_depth_semitones: 0.6
+      volume_envelope:
+        - [0.0, -6.0]
+        - [0.2, 1.5]
+        - [0.8, -1.0]
+        - [1.0, -22.0]
+    phonemes:
+      - symbol: "a"
+        type: "vowel"
+        duration_ms: 300
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 1000
+      - symbol: "canine_howl"
+        type: "creature"
+        duration_ms: 500
+
+  # 4. High Submissive Whimper: "Eee-nn"
+  - label: "Whine"
+    duration_ms: 500
+    prosody:
+      phonation: "falsetto"
+      pitch_curve:
+        - [0.0, 950.0]
+        - [0.5, 1250.0]
+        - [1.0, 800.0]
+      vibrato_rate_hz: 8.5
+      vibrato_depth_semitones: 0.3
+    phonemes:
+      - symbol: "canine_whine"
+        type: "creature"
+        duration_ms: 500

@@ -1,0 +1,97 @@
+version: "1.0"
+language: "Avian Syrinx Songbird Melody"
+description: "Avian vocalization benchmark simulating rapid high-frequency dual-syrinx pitch sweeps (1200Hz - 2800Hz), staccato melodic chirps, and delicate breathy harmonics."
+
+speaker:
+  name: "Nightingale / Songbird"
+  base_pitch_hz: 1400.0
+  pitch_range_semitones: 24.0
+  vocal_tract_scale: 0.45 # Miniature avian syrinx cavity
+  breathiness: 0.04
+  vocal_fry: 0.0
+  growl_roughness: 0.0
+  purr_depth: 0.0
+  cursive_flow: 0.94
+  acoustic_warmth: 0.15
+  fleshiness: 0.55
+  default_volume_db: 0.0
+
+utterance:
+  # 1. Rapid Ascending Chirp: "Tsi-wi"
+  - label: "Tsiwi"
+    duration_ms: 180
+    prosody:
+      pitch_curve:
+        - [0.0, 1100.0]
+        - [0.4, 2400.0]
+        - [1.0, 1800.0]
+      phonation: "falsetto"
+      volume_envelope:
+        - [0.0, -10.0]
+        - [0.2, 0.0]
+        - [1.0, -4.0]
+    phonemes:
+      - symbol: "s"
+        type: "consonant"
+        duration_ms: 40
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 70
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 70
+
+  # 2. Melodic Trill Cascade: "Tili-tili"
+  - label: "Tili"
+    duration_ms: 320
+    prosody:
+      pitch_curve:
+        - [0.0, 2200.0]
+        - [0.25, 1600.0]
+        - [0.5, 2600.0]
+        - [0.75, 1900.0]
+        - [1.0, 2800.0]
+      phonation: "falsetto"
+      vibrato_rate_hz: 12.0
+      vibrato_depth_semitones: 0.8
+    phonemes:
+      - symbol: "t"
+        type: "consonant"
+        duration_ms: 30
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 130
+      - symbol: "l"
+        type: "consonant"
+        duration_ms: 40
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 120
+
+  # 3. Sustained Pure Flute Cadence: "Phee-uu"
+  - label: "Pheeuu"
+    duration_ms: 550
+    prosody:
+      pitch_curve:
+        - [0.0, 2600.0]
+        - [0.4, 2900.0]
+        - [0.8, 2100.0]
+        - [1.0, 1200.0]
+      phonation: "modal"
+      vibrato_rate_hz: 7.0
+      vibrato_depth_semitones: 0.5
+      volume_envelope:
+        - [0.0, -4.0]
+        - [0.2, 1.5]
+        - [0.7, 0.0]
+        - [1.0, -24.0]
+    phonemes:
+      - symbol: "f"
+        type: "consonant"
+        duration_ms: 60
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 250
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 240

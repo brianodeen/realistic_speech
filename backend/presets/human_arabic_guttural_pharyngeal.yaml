@@ -1,0 +1,74 @@
+version: "1.0"
+language: "Arabic Guttural & Pharyngeal Speech"
+description: "Human articulatory benchmark testing deep pharyngeal and uvular consonants (/q/ uvular stop, /x/ voiceless velar fricative, and /ʔ/ glottal stops) with rich back vowel coloring."
+
+speaker:
+  name: "Tariq (Deep Baritone)"
+  base_pitch_hz: 115.0
+  pitch_range_semitones: 12.0
+  vocal_tract_scale: 1.08
+  breathiness: 0.08
+  vocal_fry: 0.12
+  growl_roughness: 0.0
+  purr_depth: 0.0
+  cursive_flow: 0.85
+  acoustic_warmth: 0.55
+  fleshiness: 0.76
+  default_volume_db: 0.0
+
+utterance:
+  # 1. "qal" /qal/ (Uvular voiceless stop into open back vowel into alveolar lateral)
+  - label: "qal"
+    duration_ms: 380
+    prosody:
+      chao_tone: "51"
+      phonation: "modal"
+    phonemes:
+      - symbol: "q_glottal"
+        type: "consonant"
+        duration_ms: 70
+      - symbol: "a"
+        type: "vowel"
+        duration_ms: 210
+      - symbol: "l"
+        type: "consonant"
+        duration_ms: 100
+
+  # 2. "xab" /xab/ (Voiceless velar/uvular fricative into open vowel into bilabial stop)
+  - label: "xab"
+    duration_ms: 360
+    prosody:
+      chao_tone: "35"
+      phonation: "modal"
+    phonemes:
+      - symbol: "x_velar"
+        type: "consonant"
+        duration_ms: 130
+      - symbol: "a"
+        type: "vowel"
+        duration_ms: 160
+      - symbol: "b"
+        type: "consonant"
+        duration_ms: 70
+
+  # 3. "ruːħ" /ruːħ/ (Alveolar trill into long back vowel into deep pharyngeal fricative)
+  - label: "ruːħ"
+    duration_ms: 450
+    prosody:
+      chao_tone: "51"
+      phonation: "breathy"
+      volume_envelope:
+        - [0.0, -3.0]
+        - [0.2, 1.0]
+        - [0.7, 0.0]
+        - [1.0, -18.0]
+    phonemes:
+      - symbol: "r"
+        type: "consonant"
+        duration_ms: 90
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 220
+      - symbol: "x_velar"
+        type: "consonant"
+        duration_ms: 140

@@ -1,0 +1,92 @@
+version: "1.0"
+language: "English Continuous Vowel & Diphthong Glides"
+description: "Human speech benchmark testing continuous cursive formant transitions between vowels, diphthongs, and glides ('We saw you go' /wiː sɔː juː ɡoʊ/)."
+
+speaker:
+  name: "Emma (Natural Soprano)"
+  base_pitch_hz: 190.0
+  pitch_range_semitones: 12.0
+  vocal_tract_scale: 0.95
+  breathiness: 0.04
+  vocal_fry: 0.02
+  growl_roughness: 0.0
+  purr_depth: 0.0
+  cursive_flow: 0.92
+  acoustic_warmth: 0.42
+  fleshiness: 0.78
+  default_volume_db: 0.0
+
+utterance:
+  # 1. "We" /wiː/ (Close-mid front glide into long close front vowel)
+  - label: "wiː"
+    duration_ms: 320
+    prosody:
+      chao_tone: "35" # Rising intonation
+      phonation: "modal"
+      volume_envelope:
+        - [0.0, -4.0]
+        - [0.3, 0.0]
+        - [1.0, -1.0]
+    phonemes:
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 80
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 240
+
+  # 2. "saw" /sɔː/ (Alveolar fricative into open-mid back vowel)
+  - label: "sɔː"
+    duration_ms: 380
+    prosody:
+      chao_tone: "51" # Falling intonation
+      phonation: "modal"
+      volume_envelope:
+        - [0.0, -2.0]
+        - [0.2, 1.0]
+        - [1.0, -3.0]
+    phonemes:
+      - symbol: "s"
+        type: "consonant"
+        duration_ms: 120
+      - symbol: "open_o"
+        type: "vowel"
+        duration_ms: 260
+
+  # 3. "you" /juː/ (Palatal approximant into long close back rounded vowel)
+  - label: "juː"
+    duration_ms: 360
+    prosody:
+      chao_tone: "33" # Mid sustain
+      phonation: "modal"
+      vibrato_rate_hz: 5.2
+      vibrato_depth_semitones: 0.4
+    phonemes:
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 90
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 270
+
+  # 4. "go" /ɡoʊ/ (Voiced velar stop into close-mid back diphthong)
+  - label: "ɡoʊ"
+    duration_ms: 420
+    prosody:
+      chao_tone: "51" # Final falling cadence
+      phonation: "modal"
+      volume_envelope:
+        - [0.0, -3.0]
+        - [0.2, 0.0]
+        - [0.8, -2.0]
+        - [1.0, -20.0]
+    phonemes:
+      - symbol: "g"
+        type: "consonant"
+        duration_ms: 70
+      - symbol: "o"
+        type: "vowel"
+        duration_ms: 200
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 150

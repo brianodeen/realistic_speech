@@ -1,0 +1,94 @@
+version: "1.0"
+language: "Domestic Feline Vocal Repertoire"
+description: "Domestic cat vocal sequences: Friendly chirrup greeting ('Trrrt!'), questioning meow glide ('Mraow?'), defensive warning hiss ('Hsss!'), and rhythmic chest purr ('Prrrr')."
+
+speaker:
+  name: "Mochi the Calico"
+  base_pitch_hz: 320.0
+  pitch_range_semitones: 16.0
+  vocal_tract_scale: 0.75 # Compact feline vocal tract
+  breathiness: 0.08
+  vocal_fry: 0.10
+  growl_roughness: 0.15
+  purr_depth: 0.0
+  cursive_flow: 0.90
+  acoustic_warmth: 0.45
+  fleshiness: 0.78
+  default_volume_db: 0.0
+
+utterance:
+  # 1. Friendly Trill/Chirp: "Trrrt!"
+  - label: "Trrrt"
+    duration_ms: 220
+    prosody:
+      chao_tone: "35" # Rising happy greeting
+      phonation: "modal"
+    phonemes:
+      - symbol: "r"
+        type: "consonant"
+        duration_ms: 90
+      - symbol: "i"
+        type: "vowel"
+        duration_ms: 100
+      - symbol: "t"
+        type: "consonant"
+        duration_ms: 30
+
+  # 2. Expressive Questioning Meow: "Mrrr-a-o-w?"
+  - label: "Mraow"
+    duration_ms: 650
+    prosody:
+      pitch_curve:
+        - [0.0, 260.0]
+        - [0.25, 380.0] # High arch
+        - [0.70, 440.0]
+        - [1.0, 310.0]
+      phonation: "modal"
+      volume_envelope:
+        - [0.0, -12.0]
+        - [0.2, 1.5]
+        - [0.8, 0.0]
+        - [1.0, -20.0]
+    phonemes:
+      - symbol: "m"
+        type: "consonant"
+        duration_ms: 120
+      - symbol: "r"
+        type: "consonant"
+        duration_ms: 80
+      - symbol: "a"
+        type: "vowel"
+        duration_ms: 200
+      - symbol: "o"
+        type: "vowel"
+        duration_ms: 150
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 100
+
+  # 3. Defensive Warning Hiss: "Hsss!"
+  - label: "Hsss"
+    duration_ms: 450
+    prosody:
+      phonation: "whisper"
+    phonemes:
+      - symbol: "feline_hiss"
+        type: "creature"
+        intensity: 0.95
+        duration_ms: 450
+
+  # 4. Content Rhythmic Chest Purr: "Prrrr"
+  - label: "Purrr"
+    duration_ms: 700
+    prosody:
+      chao_tone: "11"
+      phonation: "feline_purr"
+    phonemes:
+      - symbol: "p"
+        type: "consonant"
+        duration_ms: 50
+      - symbol: "feline_purr"
+        type: "creature"
+        intensity: 0.90
+        rate_hz: 24.5
+        duration_ms: 650
