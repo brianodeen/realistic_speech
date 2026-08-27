@@ -1,11 +1,16 @@
 """
-Pydantic data models for the Universal Phonetic & Prosodic Conlang Script format.
+Pydantic data models for the Universal Phonetic & Prosodic Conlang Script format,
+and the low-level Parametric Spectral Sound Segment schema from the architectural specification.
 Supports JSON and YAML serialization/deserialization.
 """
 
 from typing import List, Optional, Union, Tuple, Dict, Any
 from pydantic import BaseModel, Field
 
+
+# ==============================================================================
+# High-Level Phonetic Conlang Schema
+# ==============================================================================
 
 class PhonemeSegment(BaseModel):
     symbol: str = Field(..., description="Phonetic or creature symbol, e.g., 'k', 'a', 'feline_growl', 'click_alveolar'")
@@ -88,3 +93,64 @@ class ConlangScript(BaseModel):
     description: Optional[str] = Field(default="Phonetic & prosodic conlang script")
     speaker: SpeakerProfile = Field(default_factory=SpeakerProfile)
     utterance: List[Syllable] = Field(default_factory=list)
+
+
+# ==============================================================================
+# Low-Level Parametric Spectral Schema (Section 5 Architecture Specification)
+# ==============================================================================
+
+class BoundaryTransition(BaseModel):
+    mode: str = Field(default="coarticulate", description="'coarticulate', 'glottal_stop', 'crossfade'")
+    transition_duration_ms: float = Field(default=60.0)
+    interpolation_curve: Optional[str] = Field(default="smootherstep", description="'linear', 'smoothstep', 'smootherstep'")
+    glottal_silence_ms: Optional[float] = Field(default=20.0)
+    glottal_pop_intensity: Optional[float] = Field(default=0.4)
+
+
+class TrajectoryPoint(BaseModel):
+    time_ratio: float = Field(..., ge=0.0, le=1.0)
+    frequency_hz: float
+
+
+class VibratoLFO(BaseModel):
+    rate_hz: float = Field(default=6.0)
+    depth_cents: float = Field(default=25.0)
+
+
+class SourceExcitation(BaseModel):
+    model: str = Field(default="rosenberg_pulse", description="'rosenberg_pulse', 'sawtooth_blit', 'white_noise', 'hybrid_growl'")
+    f0_trajectory: List[TrajectoryPoint] = Field(default_factory=list)
+    vibrato_lfo: Optional[VibratoLFO] = None
+    noise_aspiration_gain: float = Field(default=0.05, ge=0.0, le=1.0)
+    subharmonic_chaos_gain: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class FormantTrajectory(BaseModel):
+    id: str = Field(..., description="F1, F2, F3, etc.")
+    bandwidth_hz: float
+    gain_db: Optional[float] = Field(default=0.0)
+    freq_trajectory: List[TrajectoryPoint] = Field(default_factory=list)
+
+
+class FormantFilterBank(BaseModel):
+    topology: str = Field(default="cascade", description="'cascade' or 'parallel'")
+    formants: List[FormantTrajectory] = Field(default_factory=list)
+
+
+class AmplitudePoint(BaseModel):
+    time_ratio: float = Field(..., ge=0.0, le=1.0)
+    gain: float = Field(..., ge=0.0, le=1.0)
+
+
+class AcousticSoundSegment(BaseModel):
+    segment_id: str
+    duration_ms: float = Field(..., ge=10.0)
+    boundary_transition: BoundaryTransition = Field(default_factory=BoundaryTransition)
+    source_excitation: SourceExcitation
+    formant_filter_bank: FormantFilterBank
+    amplitude_envelope: List[AmplitudePoint] = Field(default_factory=list)
+
+
+class ParametricSpectralSequence(BaseModel):
+    sequence_name: str
+    segments: List[AcousticSoundSegment] = Field(default_factory=list)

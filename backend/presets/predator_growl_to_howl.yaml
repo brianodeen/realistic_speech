@@ -1,0 +1,82 @@
+version: "1.0"
+language: "Predator Growl to Wolf Howl Sequence"
+description: "Direct implementation of the Section 6 showcase transition from the Parametric Spectral Synthesis Architecture document."
+
+speaker:
+  name: "Apex Predator"
+  base_pitch_hz: 110.0
+  pitch_range_semitones: 18.0
+  vocal_tract_scale: 1.10 # Beast resonance
+  breathiness: 0.10
+  vocal_fry: 0.20
+  growl_roughness: 0.65
+  purr_depth: 0.0
+  cursive_flow: 0.85
+  acoustic_warmth: 0.50
+  fleshiness: 0.75
+  default_volume_db: 0.0
+
+utterance:
+  # Segment 1: Low Guttural Predator Growl (Subharmonic Chaos + Rising F0)
+  - label: "Grrr"
+    duration_ms: 1000
+    prosody:
+      phonation: "ventricular_growl"
+      pitch_curve:
+        - [0.0, 75.0]
+        - [0.6, 82.0]
+        - [1.0, 110.0]
+      vibrato_rate_hz: 8.0
+      vibrato_depth_semitones: 0.6
+      volume_envelope:
+        - [0.0, -18.0]
+        - [0.15, 0.0]
+        - [0.85, 0.5]
+        - [1.0, -2.0]
+    phonemes:
+      - symbol: "feline_growl"
+        type: "creature"
+        intensity: 0.95
+        subharmonic_depth: 0.85
+        duration_ms: 700
+      - symbol: "open_o"
+        type: "vowel"
+        duration_ms: 300
+
+  # Glottal Snap Occlusion Boundary
+  - label: "ʔ"
+    duration_ms: 40
+    prosody:
+      phonation: "modal"
+    phonemes:
+      - symbol: "glottal_stop"
+        type: "consonant"
+        duration_ms: 40
+
+  # Segment 2: Sustained Resonant Wolf Howl (F0 Sweep 220Hz -> 480Hz -> 280Hz + Formants)
+  - label: "Awooːː"
+    duration_ms: 2200
+    prosody:
+      phonation: "modal"
+      pitch_curve:
+        - [0.0, 220.0]
+        - [0.3, 480.0]
+        - [0.75, 450.0]
+        - [1.0, 280.0]
+      vibrato_rate_hz: 5.5
+      vibrato_depth_semitones: 0.7
+      volume_envelope:
+        - [0.0, -3.0]
+        - [0.2, 1.0]
+        - [0.8, -1.0]
+        - [1.0, -24.0]
+    phonemes:
+      - symbol: "a"
+        type: "vowel"
+        duration_ms: 400
+      - symbol: "u"
+        type: "vowel"
+        duration_ms: 1200
+      - symbol: "canine_howl"
+        type: "creature"
+        duration_ms: 600

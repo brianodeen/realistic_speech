@@ -249,9 +249,18 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
                 whine_audio = synthesize_canine_whine(actual_dur, sample_rate, base_f0=base_f0)
                 composite_excitation[curr_samp:seg_end] = whine_audio
 
-        # --- E. Glottal Stop ---
+        # --- E. Glottal Stop (/ʔ/) with Vocal Snap Transient (Section 4.2) ---
         elif sym in ["glottal_stop", "ʔ", "q_glottal"]:
+            # 1. Zero-energy occlusion
             composite_excitation[curr_samp:seg_end] *= 0.0
+            
+            # 2. Vocal snap transient explosion at release moment (subglottal pressure burst)
+            snap_len = min(int(0.008 * sample_rate), actual_dur)
+            if snap_len > 0:
+                t_snap = np.linspace(0.0, 1.0, snap_len)
+                # Asymmetric pressure spike: sharp rise at t=0, rapid exponential decay
+                snap_impulse = np.exp(-t_snap * 18.0) * np.sin(2.0 * np.pi * 180.0 * (t_snap * snap_len / sample_rate))
+                composite_excitation[curr_samp:curr_samp + snap_len] += snap_impulse * 1.6
 
         curr_samp += actual_dur
 
