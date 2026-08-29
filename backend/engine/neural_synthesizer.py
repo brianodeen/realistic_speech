@@ -3,7 +3,7 @@ Universal Neural-Bioacoustic ExtIPA Speech Synthesizer.
 Combines ultra-realistic deep neural text-to-speech vocoders (Edge-TTS Neural Voices with SSML prosody)
 with ExtIPA Cursive Liaison Parsing (‿, ͡), African velaric suction clicks (ǀ, ǃ, ǁ), glottal stops (ʔ),
 and Physical Bioacoustic Chaos Modulations (growls, purrs, snarls, barks, whines).
-Produces studio-grade, non-robotic, crystal-clear 44.1kHz human-pronounceable speech.
+Produces studio-grade, non-robotic, crystal-clear 44.1kHz human-pronounceable speech with continuous flow.
 """
 
 import asyncio
@@ -61,6 +61,20 @@ def select_best_neural_voice(script: ConlangScript) -> str:
     return "en-US-AriaNeural"
 
 
+def trim_silence(audio: np.ndarray, threshold: float = 0.005, pad_ms: float = 15.0) -> np.ndarray:
+    """Trims leading and trailing dead silence from neural TTS audio while preserving smooth natural decay."""
+    if len(audio) == 0:
+        return audio
+    abs_audio = np.abs(audio)
+    indices = np.where(abs_audio > threshold)[0]
+    if len(indices) == 0:
+        return audio
+    pad_samples = int((pad_ms / 1000.0) * SAMPLE_RATE)
+    start = max(0, indices[0] - pad_samples)
+    end = min(len(audio), indices[-1] + pad_samples)
+    return audio[start:end]
+
+
 async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset: float = 0.0, speed_rate: float = 1.0) -> np.ndarray:
     """Renders phonetic text using Edge-TTS neural engine and returns float32 numpy audio at 44.1kHz."""
     if not EDGE_TTS_AVAILABLE or not text.strip():
@@ -90,7 +104,9 @@ async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset
             num_target = int(len(data) * (SAMPLE_RATE / sr))
             data = signal.resample(data, num_target).astype(np.float32)
 
-        return data
+        # Trim dead pre-roll/post-roll silence so words and cursive phrases connect seamlessly
+        trimmed_data = trim_silence(data, threshold=0.003, pad_ms=10.0)
+        return trimmed_data
     except Exception as e:
         print(f"[NeuralTTS Warning] {e}")
         return np.zeros(0, dtype=np.float32)
@@ -181,7 +197,7 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
                 u_dict = u if isinstance(u, dict) else u.model_dump(by_alias=True)
                 brk = u_dict.get("break") or u_dict.get("break_type")
                 if brk:
-                    dur = 45.0 if "glottal" in brk else 100.0
+                    dur = 40.0 if "glottal" in brk else 75.0
                     extipa_phrases.append(ExtIPAPhrase(
                         raw_text=brk,
                         phonetic_text="",
@@ -240,9 +256,9 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
             if phrase.phonation and phrase.phonation != "modal":
                 seg_audio = apply_bioacoustic_phonation_modifier(seg_audio, phrase.phonation, base_f0, sample_rate)
 
-            # Gentle edge smoothing (3ms) to ensure continuous cursive flow without boundary clicks
+            # Gentle edge smoothing (2ms) to ensure continuous cursive flow without boundary clicks
             if len(seg_audio) > 128:
-                fade_len = int(0.003 * sample_rate)
+                fade_len = int(0.002 * sample_rate)
                 seg_audio[:fade_len] *= np.linspace(0.0, 1.0, fade_len)
                 seg_audio[-fade_len:] *= np.linspace(1.0, 0.0, fade_len)
 

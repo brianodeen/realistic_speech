@@ -14,7 +14,10 @@ from .schema import Syllable, PhonemeSegment, ProsodyTrack
 
 # Exact multi-character and single-character IPA token dictionary (ordered by longest match)
 IPA_TOKEN_TABLE = [
-    # Dipthongs & Complex Long Vowels
+    # Explicit normalized sustained vowels (Prevent split into separate syllables)
+    ("oo", "oo"), ("ee", "ee"), ("ah", "ah"), ("ay", "ay"), ("oh", "oh"),
+    
+    # Diphthongs & Complex Long Vowels
     ("oʊ", "oh"), ("aʊ", "ow"), ("aɪ", "eye"), ("eɪ", "ay"), ("ɔɪ", "oy"),
     ("iː", "ee"), ("uː", "oo"), ("eː", "ay"), ("oː", "oh"), ("aː", "ah"),
     ("ɔː", "aw"), ("ɛː", "eh"), ("ɜː", "er"), ("ɑː", "ah"), ("yː", "ue"),
@@ -85,13 +88,15 @@ class ExtIPAPhrase:
 
 def parse_extipa_string(ipa_str: str, default_tone: Optional[str] = None, default_phonation: str = "modal") -> List[ExtIPAPhrase]:
     """
-    Parses a continuous ExtIPA script string containing cursive ties (‿, ͡),
-    words, breaks (ʔ, |, ‖), clicks, ejectives, and tone annotations.
+    Parses an ExtIPA script string into continuous speech phrases separated ONLY by
+    explicit glottal stops (ʔ) or phrase breaks (|, ‖).
+    Words within a phrase flow together continuously without artificial pauses.
     """
     if not ipa_str:
         return []
 
-    tokens = re.split(r'(\s+|ʔ|\||‖)', ipa_str.strip())
+    # Split strictly on explicit breaks (ʔ, |, ‖, \n), preserving continuous multi-word phrases!
+    tokens = re.split(r'(ʔ|\||‖|\n+)', ipa_str.strip())
     phrases = []
 
     for tok in tokens:
@@ -100,12 +105,12 @@ def parse_extipa_string(ipa_str: str, default_tone: Optional[str] = None, defaul
             continue
 
         # 1. Glottal Stop / Phrase Break ("Lifting the pen")
-        if tok in ["ʔ", "|", "‖"]:
+        if tok in ["ʔ", "|", "‖"] or "\n" in tok:
             phrases.append(ExtIPAPhrase(
                 raw_text=tok,
                 phonetic_text="",
                 is_break=True,
-                break_duration_ms=45.0 if tok == "ʔ" else 100.0,
+                break_duration_ms=45.0 if tok == "ʔ" else 80.0,
                 phonation="glottal_stop"
             ))
             continue
@@ -134,17 +139,21 @@ def parse_extipa_string(ipa_str: str, default_tone: Optional[str] = None, defaul
         if tone_match:
             clean_tok = clean_tok.replace(tone_match.group(0), "")
 
-        # 5. Convert IPA / ExtIPA to Phonetic Pronunciation String
-        phonetic_word = convert_ipa_to_phonetic_orthography(clean_tok)
+        # 5. Convert multi-word phrase to continuous phonetic sentence
+        # Split words within this continuous phrase by whitespace
+        words = clean_tok.split()
+        phonetic_words = [convert_ipa_to_phonetic_orthography(w) for w in words if w.strip()]
+        phonetic_phrase = " ".join(phonetic_words).strip()
 
-        phrases.append(ExtIPAPhrase(
-            raw_text=tok,
-            phonetic_text=phonetic_word,
-            chao_tone=detected_tone,
-            phonation=detected_phonation,
-            has_click=has_click,
-            click_type=click_type,
-        ))
+        if phonetic_phrase:
+            phrases.append(ExtIPAPhrase(
+                raw_text=tok,
+                phonetic_text=phonetic_phrase,
+                chao_tone=detected_tone,
+                phonation=detected_phonation,
+                has_click=has_click,
+                click_type=click_type,
+            ))
 
     return phrases
 
@@ -152,7 +161,7 @@ def parse_extipa_string(ipa_str: str, default_tone: Optional[str] = None, defaul
 def convert_ipa_to_phonetic_orthography(ipa_word: str) -> str:
     """
     Converts an IPA word/cursive compound into clean, natural phonetic orthography
-    using longest-match token replacement.
+    with consecutive vowel collapse (e.g. 'awoooo' -> 'Awoo').
     """
     w = ipa_word.strip()
     if not w:
@@ -165,9 +174,19 @@ def convert_ipa_to_phonetic_orthography(ipa_word: str) -> str:
         "Oooommm": "Ohm", "Aaaa-eeee": "Ah-ee",
         "Oooommm‿Aaaa-eeee": "Ohm Ah-ee",
         "Trrrt": "Trrt", "Mraow": "Meow",
+        "awooooːː": "Awoo", "awoooo": "Awoo", "awoo": "Awoo",
+        "roaaar": "Roar", "krrgh": "Krrgh",
     }
     if w in known_phrases:
         return known_phrases[w]
+
+    # 1. Collapse multiple consecutive identical vowels into a single sustained vowel
+    # e.g. 'oooo' -> 'oo', 'uuuu' -> 'oo', 'aaaa' -> 'aa', 'eeee' -> 'ee', 'iiii' -> 'ee'
+    w = re.sub(r'o{2,}', 'oo', w, flags=re.IGNORECASE)
+    w = re.sub(r'u{2,}', 'oo', w, flags=re.IGNORECASE)
+    w = re.sub(r'a{2,}', 'aa', w, flags=re.IGNORECASE)
+    w = re.sub(r'e{2,}', 'ee', w, flags=re.IGNORECASE)
+    w = re.sub(r'i{2,}', 'ee', w, flags=re.IGNORECASE)
 
     # Clean secondary articulation marks and length marks that don't change core spelling
     w = w.replace("ˠ", "").replace("ˀ", "")
