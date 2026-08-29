@@ -21,7 +21,7 @@ def test_presets():
             data = yaml.safe_load(f)
             
         script = ConlangScript(**data)
-        assert script.utterance, f"Utterance empty in {p_path}"
+        assert script.utterance or script.script, f"Utterance/script empty in {p_path}"
         
         audio, telemetry = synthesize_script(script)
         

@@ -662,6 +662,43 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-color: var(--border-color);
 }
 
+.extipa-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: #090e18;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+.toolbar-label {
+    font-size: 0.70rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+.btn-ipa-insert {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: #38bdf8;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.btn-ipa-insert:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+    transform: translateY(-1px);
+}
+
 .code-editor-wrapper {
     position: relative;
     height: 180px;

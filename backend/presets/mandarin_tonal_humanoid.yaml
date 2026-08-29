@@ -1,70 +1,10 @@
-version: "1.0"
-language: "Mandarin Chinese 4 Tones Benchmark"
-description: "Demonstration of the 4 standard Chinese tonal contours: Tone 1 (55 high flat), Tone 2 (35 rising), Tone 3 (214 dipping), Tone 4 (51 falling) across the syllable 'ma'."
+version: "2.0"
+language: "Mandarin (4-Tone Benchmark)"
+description: "Demonstrates four distinct tonal contours on standard vowel-consonant morphemes: mā má mǎ mà."
 
 speaker:
-  name: "Standard Tonal Voice"
-  base_pitch_hz: 160.0
-  pitch_range_semitones: 12.0
-  vocal_tract_scale: 1.0 # Standard human
-  breathiness: 0.04
-  vocal_fry: 0.0
-  growl_roughness: 0.0
-  purr_depth: 0.0
-  cursive_flow: 0.90
-  acoustic_warmth: 0.45
-  fleshiness: 0.75
-  default_volume_db: 0.0
+  name: "Xiaoxiao"
+  voice_type: "natural_female"
+  base_pitch_hz: 180.0
 
-utterance:
-  # 1. mā (Tone 1: 55 High Level)
-  - label: "mā (55)"
-    prosody:
-      chao_tone: "55"
-      phonation: "modal"
-    phonemes:
-      - symbol: "m"
-        type: "consonant"
-        duration_ms: 100
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 250
-
-  # 2. má (Tone 2: 35 High Rising)
-  - label: "má (35)"
-    prosody:
-      chao_tone: "35"
-      phonation: "modal"
-    phonemes:
-      - symbol: "m"
-        type: "consonant"
-        duration_ms: 100
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 250
-
-  # 3. mǎ (Tone 3: 214 Dipping)
-  - label: "mǎ (214)"
-    prosody:
-      chao_tone: "214"
-      phonation: "modal"
-    phonemes:
-      - symbol: "m"
-        type: "consonant"
-        duration_ms: 100
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 300
-
-  # 4. mà (Tone 4: 51 High Falling)
-  - label: "mà (51)"
-    prosody:
-      chao_tone: "51"
-      phonation: "modal"
-    phonemes:
-      - symbol: "m"
-        type: "consonant"
-        duration_ms: 80
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 220
+script: "mā má mǎ mà"

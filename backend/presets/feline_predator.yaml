@@ -1,73 +1,18 @@
-version: "1.0"
+version: "2.0"
 language: "Zha-Kari (Feline Predator Conlang)"
-description: "A predatory felid language featuring guttural false-cord throat growls, soft rhythmic purr trills, and falling tonal cadences."
+description: "Human-pronounceable predatory felid language featuring false-cord throat growls, soft rhythmic purr trills, and glottal breaks."
 
 speaker:
   name: "Vakkar Shadow-Stalker"
+  voice_type: "baritone"
   base_pitch_hz: 135.0
-  pitch_range_semitones: 14.0
-  vocal_tract_scale: 0.98
-  breathiness: 0.08
-  vocal_fry: 0.15
-  growl_roughness: 0.40
-  purr_depth: 0.0
-  cursive_flow: 0.85
-  acoustic_warmth: 0.45
-  fleshiness: 0.70
-  default_volume_db: 0.0
+  speed_rate: 0.90
 
 utterance:
-  # Syllable 1: "k͡rˠa" (Velar stop into deep throat growl into open vowel, Tone 51)
-  - label: "k͡rˠa"
-    prosody:
-      chao_tone: "51" # High falling tone
-      phonation: "ventricular_growl"
-      volume_envelope:
-        - [0.0, -3.0]
-        - [0.2, 1.5]
-        - [1.0, -8.0]
-    phonemes:
-      - symbol: "k"
-        type: "consonant"
-        duration_ms: 60
-      - symbol: "feline_growl"
-        type: "creature"
-        intensity: 0.90
-        subharmonic_depth: 0.80
-        duration_ms: 180
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 140
+  - phrase: "k͡rˠaː‿ʃuː"
+    phonation: "growl"
+  
+  - break: "glottal_stop"
 
-  # Syllable 2: "ʃuː" (Postalveolar fricative into breathy long close back vowel, Tone 35)
-  - label: "ʃuː"
-    prosody:
-      chao_tone: "35" # High rising tone
-      phonation: "breathy"
-      vibrato_rate_hz: 6.0
-      vibrato_depth_semitones: 0.8
-    phonemes:
-      - symbol: "sh"
-        type: "consonant"
-        duration_ms: 110
-      - symbol: "u"
-        type: "vowel"
-        duration_ms: 220
-
-  # Syllable 3: "pʬ̃ər" (Bilabial stop into deep rhythmic purr resonance, Tone 11)
-  - label: "pʬ̃ər"
-    prosody:
-      chao_tone: "11" # Deep steady base pitch
-      phonation: "feline_purr"
-    phonemes:
-      - symbol: "p"
-        type: "consonant"
-        duration_ms: 50
-      - symbol: "feline_purr"
-        type: "creature"
-        intensity: 0.95
-        rate_hz: 24.5
-        duration_ms: 260
-      - symbol: "schwa"
-        type: "vowel"
-        duration_ms: 100
+  - phrase: "pʬ̃ərː"
+    phonation: "purr"

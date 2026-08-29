@@ -1,75 +1,20 @@
-version: "1.0"
+version: "2.0"
 language: "Xylos (Tonal Click Conlang)"
-description: "A human-pronounceable artificial language utilizing velaric suction clicks (dental [kǀ], alveolar [kǃ], lateral [kǁ]), ejectives, and Chao tonal contours."
+description: "Human-pronounceable conlang utilizing African velaric suction clicks (dental [kǀ], alveolar [kǃ], lateral [kǁ]), cursive glides, and glottal breaks."
 
 speaker:
   name: "Kalo the Storyteller"
+  voice_type: "natural_male"
   base_pitch_hz: 145.0
-  pitch_range_semitones: 12.0
-  vocal_tract_scale: 1.0 # Natural human vocal tract
-  breathiness: 0.04
-  vocal_fry: 0.05
-  growl_roughness: 0.0
-  purr_depth: 0.0
-  cursive_flow: 0.85
-  acoustic_warmth: 0.40
-  fleshiness: 0.70
-  default_volume_db: 0.0
+  speed_rate: 0.95
 
 utterance:
-  # Syllable 1: "kǀi" (Sharp Dental Click with velar release into Close Front Vowel, Tone 55)
-  - label: "kǀi"
-    duration_ms: 280
-    prosody:
-      chao_tone: "55" # High flat
-      phonation: "modal"
-      volume_envelope:
-        - [0.0, 0.0]
-        - [0.3, 1.0]
-        - [1.0, -2.0]
-    phonemes:
-      - symbol: "click_dental"
-        type: "consonant"
-        duration_ms: 30
-      - symbol: "ejective_k"
-        type: "consonant"
-        duration_ms: 40
-      - symbol: "i"
-        type: "vowel"
-        duration_ms: 210
+  - phrase: "kǀiː‿ʃuː"
+    tone: "51 35"
+    phonation: "modal"
+  
+  - break: "glottal_stop"
 
-  # Syllable 2: "kǃa" (Sharp Alveolar Click with velar release into Open Vowel, Tone 214 Dipping)
-  - label: "kǃa"
-    duration_ms: 360
-    prosody:
-      chao_tone: "214" # Dipping tone
-      phonation: "modal"
-      volume_envelope:
-        - [0.0, -1.0]
-        - [0.4, 0.5]
-        - [1.0, -3.0]
-    phonemes:
-      - symbol: "click_alveolar"
-        type: "consonant"
-        duration_ms: 35
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 325
-
-  # Syllable 3: "kǁu" (Sharp Lateral Click into Back Rounded Vowel, Tone 51 Falling)
-  - label: "kǁu"
-    duration_ms: 340
-    prosody:
-      chao_tone: "51" # High falling tone
-      phonation: "modal"
-      volume_envelope:
-        - [0.0, 0.0]
-        - [0.3, 1.5]
-        - [1.0, -16.0]
-    phonemes:
-      - symbol: "click_lateral"
-        type: "consonant"
-        duration_ms: 35
-      - symbol: "u"
-        type: "vowel"
-        duration_ms: 305
+  - phrase: "kǃaː‿kǁuː"
+    tone: "214 55"
+    phonation: "modal"

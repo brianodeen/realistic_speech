@@ -1,7 +1,7 @@
 """
 Pydantic data models for the Universal Phonetic & Prosodic Conlang Script format,
 and the low-level Parametric Spectral Sound Segment schema from the architectural specification.
-Supports JSON and YAML serialization/deserialization.
+Supports JSON and YAML serialization/deserialization with concise ExtIPA cursive strings.
 """
 
 from typing import List, Optional, Union, Tuple, Dict, Any
@@ -38,28 +38,19 @@ class PhonemeSegment(BaseModel):
 
 
 class ProsodyTrack(BaseModel):
-    # Tone representation: 5-level Chao tone string (e.g., '55', '35', '214', '51', '11')
     chao_tone: Optional[str] = Field(default=None, description="Chao 5-level tone number, e.g., '55' (high flat), '35' (rising), '214' (dipping), '51' (falling)")
-    
-    # Continuous pitch curve: list of [time_ratio (0.0 to 1.0), pitch_hz or relative_semitone]
     pitch_curve: Optional[List[Tuple[float, float]]] = Field(
         default=None, 
         description="Explicit pitch curve spline points: [[time_ratio, f0_hz], ...]"
     )
-    
-    # Volume dynamics curve: list of [time_ratio (0.0 to 1.0), db_offset (-24.0 to +6.0)]
     volume_envelope: Optional[List[Tuple[float, float]]] = Field(
         default=None,
         description="Volume dynamics curve points: [[time_ratio, db_offset], ...]"
     )
-    
-    # Phonation mode
     phonation: str = Field(
         default="modal", 
-        description="modal, breathy, creaky, ventricular_growl, whisper, falsetto, feline_purr"
+        description="modal, breathy, creaky, ventricular_growl, whisper, falsetto, feline_purr, growl, purr, snarl"
     )
-    
-    # Micro-prosody vibrato/tremolo
     vibrato_rate_hz: Optional[float] = Field(default=0.0, description="Vibrato rate in Hz (0 = none, typical 5-7Hz)")
     vibrato_depth_semitones: Optional[float] = Field(default=0.0, description="Vibrato depth in semitones")
 
@@ -72,11 +63,20 @@ class Syllable(BaseModel):
     phonemes: List[PhonemeSegment] = Field(default_factory=list)
 
 
+class ExtIPAPhraseItem(BaseModel):
+    phrase: Optional[str] = Field(default=None, description="ExtIPA phonetic string with cursive ties, e.g., 'kǀiː‿ʃuː'")
+    tone: Optional[str] = Field(default=None, description="Chao tone string, e.g., '55', '51 35'")
+    phonation: Optional[str] = Field(default="modal", description="modal, breathy, creaky, growl, purr, snarl, whisper")
+    break_type: Optional[str] = Field(default=None, alias="break", description="'glottal_stop', 'pause', 'breath'")
+
+
 class SpeakerProfile(BaseModel):
     name: str = Field(default="Conlang Speaker")
+    voice_type: Optional[str] = Field(default="natural_male", description="'natural_male', 'natural_female', 'baritone', 'soprano', 'elder', 'deep_beast'")
     base_pitch_hz: float = Field(default=140.0, description="Base fundamental frequency F0 in Hz (100-300)")
     pitch_range_semitones: float = Field(default=12.0, description="Pitch range spanning Chao levels 1 to 5")
-    vocal_tract_scale: float = Field(default=1.0, description="Vocal tract scaling: < 1.0 (smaller/feline), 1.0 (human), > 1.0 (canine/beast)")
+    vocal_tract_scale: float = Field(default=1.0, description="Vocal tract scaling: 1.0 (human)")
+    speed_rate: float = Field(default=1.0, description="Speech rate multiplier (0.8 slower, 1.2 faster)")
     breathiness: float = Field(default=0.05, description="Global breathy noise mix (0.0 to 1.0)")
     vocal_fry: float = Field(default=0.0, description="Global vocal fry/creak mix (0.0 to 1.0)")
     growl_roughness: float = Field(default=0.0, description="Global ventricular growl roughness (0.0 to 1.0)")
@@ -88,11 +88,12 @@ class SpeakerProfile(BaseModel):
 
 
 class ConlangScript(BaseModel):
-    version: str = Field(default="1.0")
+    version: str = Field(default="2.0")
     language: str = Field(default="Universal Conlang")
-    description: Optional[str] = Field(default="Phonetic & prosodic conlang script")
+    description: Optional[str] = Field(default="ExtIPA Phonetic Cursive Script")
     speaker: SpeakerProfile = Field(default_factory=SpeakerProfile)
-    utterance: List[Syllable] = Field(default_factory=list)
+    script: Optional[Union[str, List[str]]] = Field(default=None, description="Concise ExtIPA cursive text string, e.g. 'wiː‿sɔː juː‿ɡoʊ'")
+    utterance: List[Union[Syllable, ExtIPAPhraseItem, Dict[str, Any]]] = Field(default_factory=list)
 
 
 # ==============================================================================
@@ -113,44 +114,40 @@ class TrajectoryPoint(BaseModel):
 
 
 class VibratoLFO(BaseModel):
-    rate_hz: float = Field(default=6.0)
-    depth_cents: float = Field(default=25.0)
+    rate_hz: float = Field(default=5.5)
+    depth_semitones: float = Field(default=0.5)
+    onset_delay_ms: float = Field(default=100.0)
 
 
-class SourceExcitation(BaseModel):
-    model: str = Field(default="rosenberg_pulse", description="'rosenberg_pulse', 'sawtooth_blit', 'white_noise', 'hybrid_growl'")
-    f0_trajectory: List[TrajectoryPoint] = Field(default_factory=list)
-    vibrato_lfo: Optional[VibratoLFO] = None
-    noise_aspiration_gain: float = Field(default=0.05, ge=0.0, le=1.0)
-    subharmonic_chaos_gain: float = Field(default=0.0, ge=0.0, le=1.0)
+class ContinuousParameterTrack(BaseModel):
+    anchor_points: List[TrajectoryPoint] = Field(default_factory=list)
+    vibrato: Optional[VibratoLFO] = Field(default=None)
+    cubic_tension: float = Field(default=0.0)
 
 
-class FormantTrajectory(BaseModel):
-    id: str = Field(..., description="F1, F2, F3, etc.")
-    bandwidth_hz: float
-    gain_db: Optional[float] = Field(default=0.0)
-    freq_trajectory: List[TrajectoryPoint] = Field(default_factory=list)
-
-
-class FormantFilterBank(BaseModel):
-    topology: str = Field(default="cascade", description="'cascade' or 'parallel'")
-    formants: List[FormantTrajectory] = Field(default_factory=list)
-
-
-class AmplitudePoint(BaseModel):
-    time_ratio: float = Field(..., ge=0.0, le=1.0)
-    gain: float = Field(..., ge=0.0, le=1.0)
+class VocalTractResonator(BaseModel):
+    index: int = Field(..., ge=1, le=5)
+    frequency_track: ContinuousParameterTrack
+    bandwidth_hz: float = Field(default=90.0)
+    gain_db: float = Field(default=0.0)
 
 
 class AcousticSoundSegment(BaseModel):
-    segment_id: str
-    duration_ms: float = Field(..., ge=10.0)
-    boundary_transition: BoundaryTransition = Field(default_factory=BoundaryTransition)
-    source_excitation: SourceExcitation
-    formant_filter_bank: FormantFilterBank
-    amplitude_envelope: List[AmplitudePoint] = Field(default_factory=list)
+    id: str
+    symbol_ipa: str
+    duration_ms: float
+    boundary_in: BoundaryTransition = Field(default_factory=BoundaryTransition)
+    boundary_out: BoundaryTransition = Field(default_factory=BoundaryTransition)
+    f0_track: ContinuousParameterTrack
+    volume_track: ContinuousParameterTrack
+    formants: List[VocalTractResonator] = Field(default_factory=list)
+    aspiration_noise_gain: float = Field(default=0.0)
+    frication_noise_gain: float = Field(default=0.0)
+    creature_mod_gain: float = Field(default=0.0)
 
 
 class ParametricSpectralSequence(BaseModel):
-    sequence_name: str
-    segments: List[AcousticSoundSegment] = Field(default_factory=list)
+    version: str = Field(default="1.0")
+    audio_sample_rate: int = Field(default=44100)
+    speaker_profile: SpeakerProfile = Field(default_factory=SpeakerProfile)
+    timeline: List[AcousticSoundSegment] = Field(default_factory=list)

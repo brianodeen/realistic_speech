@@ -195,20 +195,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    // 8. Bind Code Tabs
-    document.getElementById("btnTabYaml").addEventListener("click", () => {
-        document.getElementById("btnTabYaml").classList.add("active");
-        document.getElementById("btnTabJson").classList.remove("active");
-        yamlSync.setFormat("yaml");
-        yamlSync.updateFromState(currentScript);
-    });
+    // 8. Bind Code Tabs (ExtIPA, YAML, JSON)
+    const tabExtIpa = document.getElementById("btnTabExtIpa");
+    const tabYaml = document.getElementById("btnTabYaml");
+    const tabJson = document.getElementById("btnTabJson");
 
-    document.getElementById("btnTabJson").addEventListener("click", () => {
-        document.getElementById("btnTabJson").classList.add("active");
-        document.getElementById("btnTabYaml").classList.remove("active");
-        yamlSync.setFormat("json");
-        yamlSync.updateFromState(currentScript);
-    });
+    if (tabExtIpa) {
+        tabExtIpa.addEventListener("click", () => {
+            tabExtIpa.classList.add("active");
+            if (tabYaml) tabYaml.classList.remove("active");
+            if (tabJson) tabJson.classList.remove("active");
+            yamlSync.setFormat("extipa");
+            yamlSync.updateFromState(currentScript);
+        });
+    }
+
+    if (tabYaml) {
+        tabYaml.addEventListener("click", () => {
+            tabYaml.classList.add("active");
+            if (tabExtIpa) tabExtIpa.classList.remove("active");
+            if (tabJson) tabJson.classList.remove("active");
+            yamlSync.setFormat("yaml");
+            yamlSync.updateFromState(currentScript);
+        });
+    }
+
+    if (tabJson) {
+        tabJson.addEventListener("click", () => {
+            tabJson.classList.add("active");
+            if (tabExtIpa) tabExtIpa.classList.remove("active");
+            if (tabYaml) tabYaml.classList.remove("active");
+            yamlSync.setFormat("json");
+            yamlSync.updateFromState(currentScript);
+        });
+    }
 
     document.getElementById("btnFormatCode").addEventListener("click", () => {
         yamlSync.updateFromState(currentScript);

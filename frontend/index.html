@@ -209,14 +209,29 @@
                 <!-- BI-DIRECTIONAL CODE EDITOR -->
                 <section class="studio-card code-card">
                     <div class="card-header">
-                        <h2><i class="fa-solid fa-code"></i> Conlang Script (YAML / JSON)</h2>
+                        <h2><i class="fa-solid fa-pen-nib"></i> ExtIPA Cursive Script & YAML</h2>
                         <div class="code-tabs">
-                            <button id="btnTabYaml" class="btn-tab active">YAML</button>
+                            <button id="btnTabExtIpa" class="btn-tab active">ExtIPA Script</button>
+                            <button id="btnTabYaml" class="btn-tab">Full YAML</button>
                             <button id="btnTabJson" class="btn-tab">JSON</button>
                         </div>
                     </div>
+                    <!-- ExtIPA Quick Insert Toolbar -->
+                    <div class="extipa-toolbar">
+                        <span class="toolbar-label">Insert:</span>
+                        <button class="btn-ipa-insert" data-ipa="‿" title="Cursive Tie (Continuous Liaison)">‿ (Cursive Tie)</button>
+                        <button class="btn-ipa-insert" data-ipa="ʔ" title="Glottal Stop (Pen Lift Break)">ʔ (Glottal Stop)</button>
+                        <button class="btn-ipa-insert" data-ipa="kǀ" title="Dental Click [kǀ]">kǀ</button>
+                        <button class="btn-ipa-insert" data-ipa="kǃ" title="Alveolar Click [kǃ]">kǃ</button>
+                        <button class="btn-ipa-insert" data-ipa="kǁ" title="Lateral Click [kǁ]">kǁ</button>
+                        <button class="btn-ipa-insert" data-ipa="ʼ" title="Ejective Glottalization">ʼ</button>
+                        <button class="btn-ipa-insert" data-ipa="ː" title="Long Vowel / Sustained">ː</button>
+                        <button class="btn-ipa-insert" data-ipa="ʭ" title="ExtIPA Ventricular Throat Growl">ʭ (Growl)</button>
+                        <button class="btn-ipa-insert" data-ipa="ʬ̃" title="ExtIPA Neural Purr Trill">ʬ̃ (Purr)</button>
+                        <button class="btn-ipa-insert" data-ipa="f͌" title="ExtIPA Snarl Friction">f͌ (Snarl)</button>
+                    </div>
                     <div class="code-editor-wrapper">
-                        <textarea id="scriptTextarea" spellcheck="false" placeholder="Loading conlang script..."></textarea>
+                        <textarea id="scriptTextarea" spellcheck="false" placeholder="Enter ExtIPA cursive script (e.g. wiː‿sɔː juː‿ɡoʊ)..."></textarea>
                     </div>
                     <div class="code-status-bar">
                         <span id="codeSyncStatus"><i class="fa-solid fa-circle-check"></i> Synchronized</span>

@@ -1,70 +1,17 @@
-version: "1.0"
-language: "Kavrok (Canine Pack Alert Signals)"
-description: "Pack communication signals featuring rapid alert chest-barks, mucosal snarls, high whimpering whines, and pitch glides."
+version: "2.0"
+language: "Kavrok (Canine Conlang)"
+description: "Canine-inspired conlang with guttural velar stops, mucosal snarls, and glottal closures."
 
 speaker:
   name: "Garrow Alpha"
+  voice_type: "baritone"
   base_pitch_hz: 135.0
-  pitch_range_semitones: 14.0
-  vocal_tract_scale: 1.05
-  breathiness: 0.05
-  vocal_fry: 0.10
-  growl_roughness: 0.30
-  purr_depth: 0.0
-  cursive_flow: 0.75
-  acoustic_warmth: 0.40
-  fleshiness: 0.65
-  default_volume_db: 0.0
 
 utterance:
-  # Syllable 1: Sudden Alert Chest Bark
-  - label: "ʔʷɔk!"
-    prosody:
-      chao_tone: "51" # Sharp drop
-      phonation: "modal"
-    phonemes:
-      - symbol: "canine_bark"
-        type: "creature"
-        duration_ms: 120
-      - symbol: "open_o"
-        type: "vowel"
-        duration_ms: 80
-      - symbol: "k"
-        type: "consonant"
-        duration_ms: 40
+  - phrase: "wʌf"
+    phonation: "snarl"
+  
+  - break: "glottal_stop"
 
-  # Syllable 2: Aggressive Lip-curl Snarl
-  - label: "r_snarl-a"
-    prosody:
-      chao_tone: "33" # Sustained menacing tone
-      phonation: "modal"
-    phonemes:
-      - symbol: "canine_snarl"
-        type: "creature"
-        intensity: 0.90
-        rate_hz: 48.0
-        duration_ms: 220
-      - symbol: "ae"
-        type: "vowel"
-        duration_ms: 120
-
-  # Syllable 3: High Falsetto Whimper Glide
-  - label: "wiːː"
-    prosody:
-      phonation: "falsetto"
-      pitch_curve:
-        - [0.0, 950]   # High start
-        - [0.4, 1600]  # Rising sweep
-        - [0.8, 1200]
-        - [1.0, 700]   # Downward whimper
-      volume_envelope:
-        - [0.0, -10.0]
-        - [0.3, 0.0]
-        - [1.0, -14.0]
-    phonemes:
-      - symbol: "canine_whine"
-        type: "creature"
-        duration_ms: 200
-      - symbol: "i"
-        type: "vowel"
-        duration_ms: 180
+  - phrase: "ɡˠarː‿awooooːː"
+    phonation: "modal"

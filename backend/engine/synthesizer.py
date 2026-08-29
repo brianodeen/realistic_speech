@@ -10,7 +10,7 @@ import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
 from scipy import signal
 
-from .schema import ConlangScript, Syllable, PhonemeSegment
+from .schema import ConlangScript, Syllable, PhonemeSegment, ExtIPAPhraseItem
 from .articulatory import VOWEL_TABLE, CONSONANT_TABLE, CREATURE_TABLE
 from .prosody import generate_f0_contour, generate_volume_envelope
 from .glottal import generate_glottal_source
@@ -27,6 +27,8 @@ from .bioacoustics import (
 )
 
 
+from .extipa_parser import parse_extipa_string, extipa_to_syllables
+
 SAMPLE_RATE = 44100
 
 
@@ -35,7 +37,28 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
     Main entry point: Synthesizes a complete ConlangScript using continuous
     cursive coarticulation, time-varying formant trajectories, and bioacoustic modulation.
     """
-    if not script.utterance:
+    # If concise ExtIPA script string is provided, parse it
+    syllable_list = []
+    if script.script:
+        raw_str = " ".join(script.script) if isinstance(script.script, list) else str(script.script)
+        phrases = parse_extipa_string(raw_str)
+        syllable_list = extipa_to_syllables(phrases)
+    elif script.utterance:
+        # Check if utterance items are Syllable objects or ExtIPAPhraseItems
+        for u in script.utterance:
+            if isinstance(u, Syllable):
+                syllable_list.append(u)
+            elif isinstance(u, dict) and "phonemes" in u:
+                syllable_list.append(Syllable(**u))
+            elif isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u)):
+                u_dict = u if isinstance(u, dict) else u.model_dump(by_alias=True)
+                if u_dict.get("break") or u_dict.get("break_type"):
+                    p = parse_extipa_string(u_dict.get("break") or "ʔ")
+                else:
+                    p = parse_extipa_string(u_dict.get("phrase", ""), default_tone=u_dict.get("tone"), default_phonation=u_dict.get("phonation", "modal"))
+                syllable_list.extend(extipa_to_syllables(p))
+
+    if not syllable_list:
         return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "syllables": []}
 
     speaker = script.speaker
@@ -52,7 +75,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
     inter_syl_gap_ms = 0.0 if cursive_flow >= 0.5 else (1.0 - cursive_flow) * 30.0
     inter_syl_gap_samples = int((inter_syl_gap_ms / 1000.0) * sample_rate)
 
-    for s_idx, syl in enumerate(script.utterance):
+    for s_idx, syl in enumerate(syllable_list):
         syl_start_ms = current_time_ms
         syl_phonemes = syl.phonemes or [PhonemeSegment(symbol="a", type="vowel", duration_ms=200.0)]
         syl_samples = 0
@@ -100,7 +123,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
 
     # Populate per-syllable F0 and Volume Curves
     curr_idx = 0
-    for s_idx, syl in enumerate(script.utterance):
+    for s_idx, syl in enumerate(syllable_list):
         # Calculate sample length for this syllable
         syl_segs = [p for p in phoneme_sequence if p["s_idx"] == s_idx and p["symbol"] != "pause"]
         syl_n_samp = sum(p["num_samples"] for p in syl_segs)
@@ -155,7 +178,7 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
 
     # 4. Generate Continuous Glottal Source Waveform (Preserves Continuous Phase!)
     # Determine dominant phonation across syllables
-    dominant_phonation = script.utterance[0].prosody.phonation or "modal"
+    dominant_phonation = syllable_list[0].prosody.phonation if (syllable_list and syllable_list[0].prosody) else "modal"
     raw_glottal_source = generate_glottal_source(
         f0_curve=full_f0_curve,
         sample_rate=sample_rate,

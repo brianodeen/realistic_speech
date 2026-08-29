@@ -1,96 +1,10 @@
-version: "1.0"
-language: "Vietnamese Glottalized & Creaky Tones"
-description: "Human tonal benchmark showcasing Vietnamese complex tones: Ngã (creaky-glottal rising) and Hỏi (dipping-rising) with authentic vocal fry and glottal stops."
+version: "2.0"
+language: "Vietnamese (Glottalized Tone Benchmark)"
+description: "Complex tonal contours with glottal stops and creaky phonation: Mẹ ơi, sữa cá (/mɛˀ əːj sɨəˀ kaː/)."
 
 speaker:
-  name: "Mai Linh"
-  base_pitch_hz: 215.0
-  pitch_range_semitones: 14.0
-  vocal_tract_scale: 0.92
-  breathiness: 0.05
-  vocal_fry: 0.25
-  growl_roughness: 0.0
-  purr_depth: 0.0
-  cursive_flow: 0.88
-  acoustic_warmth: 0.40
-  fleshiness: 0.75
-  default_volume_db: 0.0
+  name: "HoaiMy"
+  voice_type: "natural_female"
+  base_pitch_hz: 185.0
 
-utterance:
-  # 1. "mẹ" /mɛˀ/ (Nặng tone: low falling with sharp glottal constriction)
-  - label: "mɛˀ"
-    duration_ms: 260
-    prosody:
-      chao_tone: "21"
-      phonation: "creaky"
-      volume_envelope:
-        - [0.0, 0.0]
-        - [0.6, -1.0]
-        - [1.0, -18.0]
-    phonemes:
-      - symbol: "m"
-        type: "consonant"
-        duration_ms: 80
-      - symbol: "epsilon"
-        type: "vowel"
-        duration_ms: 140
-      - symbol: "glottal_stop"
-        type: "consonant"
-        duration_ms: 40
-
-  # 2. "ơi" /əːj/ (Ngang tone: mid level smooth flow)
-  - label: "əːj"
-    duration_ms: 320
-    prosody:
-      chao_tone: "33"
-      phonation: "modal"
-      volume_envelope:
-        - [0.0, -2.0]
-        - [0.3, 1.0]
-        - [1.0, 0.0]
-    phonemes:
-      - symbol: "schwa"
-        type: "vowel"
-        duration_ms: 220
-      - symbol: "i"
-        type: "vowel"
-        duration_ms: 100
-
-  # 3. "sữa" /sɨəˀ/ (Ngã tone: mid rising with vocal fry dip and glottal break)
-  - label: "sɨəˀ"
-    duration_ms: 380
-    prosody:
-      pitch_curve:
-        - [0.0, 200.0]
-        - [0.3, 175.0] # Dip into vocal fry
-        - [0.6, 170.0]
-        - [1.0, 265.0] # Sharp high rise
-      phonation: "creaky"
-    phonemes:
-      - symbol: "s"
-        type: "consonant"
-        duration_ms: 100
-      - symbol: "u"
-        type: "vowel"
-        duration_ms: 160
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 120
-
-  # 4. "cá" /kaː/ (Sắc tone: high rising to ceiling)
-  - label: "kaː"
-    duration_ms: 340
-    prosody:
-      chao_tone: "35"
-      phonation: "modal"
-      volume_envelope:
-        - [0.0, -3.0]
-        - [0.3, 1.5]
-        - [1.0, -12.0]
-    phonemes:
-      - symbol: "k"
-        type: "consonant"
-        duration_ms: 60
-      - symbol: "a"
-        type: "vowel"
-        duration_ms: 280
+script: "mɛˀ əːj sɨəˀ kaː"

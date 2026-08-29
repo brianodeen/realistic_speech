@@ -1,9 +1,9 @@
 """
-Universal Neural-Bioacoustic Speech Synthesizer.
-Combines ultra-realistic deep neural text-to-speech models (Edge-TTS Neural Voices with SSML prosody)
-for human phonetic articulation, with the Physical Bioacoustic Chaos Engine for creature/animal vocalizations,
-lingual suction clicks, and ejectives.
-Produces studio-grade, non-robotic, crystal-clear 44.1kHz speech.
+Universal Neural-Bioacoustic ExtIPA Speech Synthesizer.
+Combines ultra-realistic deep neural text-to-speech vocoders (Edge-TTS Neural Voices with SSML prosody)
+with ExtIPA Cursive Liaison Parsing (‿, ͡), African velaric suction clicks (ǀ, ǃ, ǁ), glottal stops (ʔ),
+and Physical Bioacoustic Chaos Modulations (growls, purrs, snarls, barks, whines).
+Produces studio-grade, non-robotic, crystal-clear 44.1kHz human-pronounceable speech.
 """
 
 import asyncio
@@ -13,7 +13,7 @@ import tempfile
 import numpy as np
 import soundfile as sf
 from scipy import signal
-from typing import Tuple, Dict, Any, Optional, List
+from typing import Tuple, Dict, Any, Optional, List, Union
 
 try:
     import edge_tts
@@ -21,7 +21,8 @@ try:
 except ImportError:
     EDGE_TTS_AVAILABLE = False
 
-from .schema import ConlangScript, Syllable, PhonemeSegment
+from .schema import ConlangScript, Syllable, PhonemeSegment, ExtIPAPhraseItem
+from .extipa_parser import parse_extipa_string, ExtIPAPhrase
 from .bioacoustics import (
     synthesize_feline_purr,
     synthesize_feline_growl,
@@ -36,15 +37,12 @@ from .articulatory import CONSONANT_TABLE, CREATURE_TABLE
 
 SAMPLE_RATE = 44100
 
-CLICK_SYMBOLS = {"click_dental", "click_alveolar", "click_lateral", "click_bilabial", "ǀ", "ǃ", "ǁ", "ʘ"}
-EJECTIVE_SYMBOLS = {"ejective_k", "ejective_t", "ejective_p", "kʼ", "tʼ", "pʼ"}
-GLOTTAL_SYMBOLS = {"glottal_stop", "ʔ", "q_glottal"}
-
 
 def select_best_neural_voice(script: ConlangScript) -> str:
     """Selects the best matching neural voice based on language and speaker parameters."""
     lang = (script.language or "").lower()
     spk_name = (script.speaker.name or "").lower()
+    vtype = (getattr(script.speaker, "voice_type", "") or "").lower()
     base_f0 = script.speaker.base_pitch_hz
 
     if "mandarin" in lang or "chinese" in lang:
@@ -53,88 +51,30 @@ def select_best_neural_voice(script: ConlangScript) -> str:
         return "vi-VN-HoaiMyNeural"
     if "arabic" in lang:
         return "ar-SA-HamedNeural"
-    if base_f0 < 130 or "deep" in spk_name or "dragon" in spk_name or "beast" in spk_name or "wolf" in spk_name:
+    
+    if "female" in vtype or "soprano" in vtype:
+        return "en-US-AriaNeural"
+    if "baritone" in vtype or "deep" in vtype or base_f0 < 130 or "beast" in spk_name or "wolf" in spk_name:
         return "en-US-GuyNeural"
-    if base_f0 < 165:
+    if base_f0 < 165 or "male" in vtype:
         return "en-US-ChristopherNeural"
     return "en-US-AriaNeural"
 
 
-def is_pure_physical_sound(symbol: str) -> bool:
-    """Checks if a phoneme symbol is a non-pulmonic click, ejective, glottal stop, or creature sound."""
-    sym = symbol.lower().strip()
-    return (
-        sym in CLICK_SYMBOLS
-        or sym in EJECTIVE_SYMBOLS
-        or sym in GLOTTAL_SYMBOLS
-        or sym in CREATURE_TABLE
-        or "click" in sym
-        or "ejective" in sym
-        or "feline" in sym
-        or "canine" in sym
-    )
-
-
-def extract_vocalic_text(syllable: Syllable) -> str:
-    """
-    Extracts only the true pronounceable vocalic/consonantal phonemes from a syllable,
-    translating phonetic symbols into human words/syllables without ever reading code names.
-    """
-    lbl = (syllable.label or "").strip()
-    clean_label_map = {
-        "wiː": "We", "wi": "We",
-        "sɔː": "saw", "sɔ": "saw",
-        "juː": "you", "ju": "you",
-        "ɡoʊ": "go", "go": "go",
-        "mā": "mā", "má": "má", "mǎ": "mǎ", "mà": "mà",
-        "mɛˀ": "Mẹ", "əːj": "ơi", "sɨəˀ": "sữa", "kaː": "cá",
-        "qal": "Qal", "xab": "khab", "ruːħ": "rooh",
-        "Oooommm": "Ohm", "Aaaa-eeee": "Ah-ee",
-        "kǀi": "Kee", "kǃa": "Kah", "kǁu": "Koo",
-        "ǀkʼi": "Kee", "ǃæ": "Kah", "ǃa": "Kah", "ǁu": "Koo",
-    }
-    if lbl in clean_label_map:
-        return clean_label_map[lbl]
-
-    symbol_to_phonetic = {
-        "i": "ee", "e": "ay", "epsilon": "eh", "a": "ah", "open_o": "aw",
-        "o": "oh", "u": "oo", "schwa": "uh", "ae": "a", "nasal_a": "ahn",
-        "nasal_o": "ohn", "m": "m", "n": "n", "p": "p", "b": "b",
-        "t": "t", "d": "d", "k": "k", "g": "g", "s": "s", "z": "z",
-        "sh": "sh", "f": "f", "v": "v", "r": "r", "l": "l", "x_velar": "kh",
-        "gamma": "gh", "h": "h", "j": "y", "w": "w"
-    }
-
-    has_click_or_ejective = any(
-        is_pure_physical_sound(p.symbol) and p.type != "creature" for p in syllable.phonemes
-    )
-
-    vocal_parts = []
-    for p in syllable.phonemes:
-        sym = p.symbol.lower().strip()
-        if is_pure_physical_sound(sym) or p.type == "creature":
-            continue
-        if sym in symbol_to_phonetic:
-            vocal_parts.append(symbol_to_phonetic[sym])
-
-    text = "".join(vocal_parts).strip()
-    if text:
-        # If this syllable has a click/ejective with only vowels, add sharp velar onset 'k'
-        if has_click_or_ejective and not any(text.lower().startswith(c) for c in ["k", "t", "p", "c", "q"]):
-            text = "k" + text
-        return text.capitalize()
-    return ""
-
-
-async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset: float = 0.0) -> np.ndarray:
-    """Renders text using Edge-TTS neural engine and returns float32 numpy audio at 44.1kHz."""
+async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset: float = 0.0, speed_rate: float = 1.0) -> np.ndarray:
+    """Renders phonetic text using Edge-TTS neural engine and returns float32 numpy audio at 44.1kHz."""
     if not EDGE_TTS_AVAILABLE or not text.strip():
         return np.zeros(0, dtype=np.float32)
 
-    # Clamp pitch offset to natural human speaking range (-15Hz to +15Hz) to prevent Chipmunk helium sound
-    clamped_offset = max(-15.0, min(15.0, pitch_hz_offset))
-    pitch_str = f"{int(clamped_offset):+d}Hz" if clamped_offset != 0 else "+0Hz"
-    communicate = edge_tts.Communicate(text=text, voice=voice_id, pitch=pitch_str)
+    # Pitch offset clamped to natural human speaking range (-15Hz to +15Hz) to prevent Chipmunk helium sound
+    clamped_pitch = max(-15.0, min(15.0, pitch_hz_offset))
+    pitch_str = f"{int(clamped_pitch):+d}Hz" if clamped_pitch != 0 else "+0Hz"
+
+    # Speed rate offset
+    rate_pct = int(round((speed_rate - 1.0) * 100))
+    rate_str = f"{rate_pct:+d}%" if rate_pct != 0 else "+0%"
+
+    communicate = edge_tts.Communicate(text=text, voice=voice_id, pitch=pitch_str, rate=rate_str)
 
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
         tmp_path = tmp_file.name
@@ -162,101 +102,167 @@ async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset
                 pass
 
 
+def apply_bioacoustic_phonation_modifier(
+    audio: np.ndarray,
+    phonation: str,
+    base_f0: float,
+    sample_rate: int = SAMPLE_RATE
+) -> np.ndarray:
+    """
+    Applies physical ExtIPA phonation modulations (ventricular growl, purr gating,
+    velopharyngeal snarl, creak, or breathy whisper) directly to the neural audio stream.
+    """
+    if len(audio) == 0 or phonation in ["modal", "", None]:
+        return audio
+
+    n = len(audio)
+    t = np.arange(n) / float(sample_rate)
+    ph = phonation.lower().strip()
+
+    # 1. Ventricular False-Fold Growl / Throat Singing (ʭ)
+    if "growl" in ph or "ventricular" in ph or ph == "ʭ":
+        sub_f0 = max(40.0, base_f0 * 0.5)
+        sub_mod = 0.5 * (1.0 + np.sin(2.0 * np.pi * sub_f0 * t))
+        noise = np.random.randn(n) * 0.15
+        return (audio * (0.65 + 0.35 * sub_mod) + noise * np.abs(audio)).astype(np.float32)
+
+    # 2. Feline Laryngeal Neural Purr Gating (ʬ̃ / ʙ)
+    elif "purr" in ph or ph == "ʬ̃" or ph == "ʙ":
+        purr_rate = 24.5  # Hz
+        twitch = 0.5 * (1.0 - np.cos(2.0 * np.pi * purr_rate * t)) ** 2
+        return (audio * (0.35 + 0.65 * twitch)).astype(np.float32)
+
+    # 3. Velopharyngeal Snarl / Mucosal Friction (f͌ / v͌)
+    elif "snarl" in ph or ph in ["f͌", "v͌"]:
+        snarl_rate = 48.0 # Hz
+        flutter = 0.5 * (1.0 + np.sin(2.0 * np.pi * snarl_rate * t))
+        noise = np.random.randn(n) * 0.20
+        return (audio * (0.55 + 0.45 * flutter) + noise * np.abs(audio)).astype(np.float32)
+
+    # 4. Breathy Whisper
+    elif "breathy" in ph or "whisper" in ph:
+        noise = np.random.randn(n) * 0.25
+        return (audio * 0.60 + noise * np.abs(audio)).astype(np.float32)
+
+    # 5. Vocal Fry / Creaky Voice
+    elif "creaky" in ph or "fry" in ph:
+        fry_pulses = (np.sin(2.0 * np.pi * 32.0 * t) > 0.85).astype(np.float32)
+        return (audio * (0.50 + 0.50 * fry_pulses)).astype(np.float32)
+
+    return audio
+
+
 async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
-    Asynchronous implementation of Universal Neural-Bioacoustic Hybrid Synthesis.
-    Combines studio neural voices for human phonetic articulation with physical DSP models
-    for suction clicks, ejectives, growls, purrs, snarls, barks, whines, and howls.
+    Asynchronous Master Pipeline for Cursive ExtIPA Neural Speech Synthesis.
+    Parses ExtIPA cursive strings, glottal breaks, and tone contours,
+    synthesizing studio-grade natural speech via Neural Vocoding with bioacoustic transfer functions.
     """
-    if not script.utterance:
-        return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "syllables": []}
-
     voice_id = select_best_neural_voice(script)
     base_f0 = script.speaker.base_pitch_hz
+    speed_rate = getattr(script.speaker, "speed_rate", 1.0) or 1.0
 
-    syllable_audio_segments = []
-    syllable_telemetry = []
+    # 1. Normalize Input to ExtIPAPhrase list
+    extipa_phrases: List[ExtIPAPhrase] = []
+
+    # Case A: Concise ExtIPA script string provided (e.g. "wiː‿sɔː juː‿ɡoʊ")
+    if script.script:
+        if isinstance(script.script, list):
+            full_script_str = " ".join(script.script)
+        else:
+            full_script_str = str(script.script)
+        extipa_phrases = parse_extipa_string(full_script_str)
+
+    # Case B: Utterance list provided
+    elif script.utterance:
+        for u in script.utterance:
+            # Utterance is an ExtIPAPhraseItem or dict with 'phrase' / 'break'
+            if isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u)):
+                u_dict = u if isinstance(u, dict) else u.model_dump(by_alias=True)
+                brk = u_dict.get("break") or u_dict.get("break_type")
+                if brk:
+                    dur = 45.0 if "glottal" in brk else 100.0
+                    extipa_phrases.append(ExtIPAPhrase(
+                        raw_text=brk,
+                        phonetic_text="",
+                        is_break=True,
+                        break_duration_ms=dur,
+                        phonation="glottal_stop"
+                    ))
+                elif u_dict.get("phrase"):
+                    p_tone = u_dict.get("tone")
+                    p_phon = u_dict.get("phonation", "modal")
+                    sub_parsed = parse_extipa_string(u_dict["phrase"], default_tone=p_tone, default_phonation=p_phon)
+                    extipa_phrases.extend(sub_parsed)
+
+            # Utterance is a classic Syllable object
+            elif isinstance(u, Syllable) or (isinstance(u, dict) and "phonemes" in u):
+                syl_obj = u if isinstance(u, Syllable) else Syllable(**u)
+                label = syl_obj.label or "".join(p.symbol for p in syl_obj.phonemes)
+                s_tone = syl_obj.prosody.chao_tone
+                s_phon = syl_obj.prosody.phonation
+                sub_parsed = parse_extipa_string(label, default_tone=s_tone, default_phonation=s_phon)
+                extipa_phrases.extend(sub_parsed)
+
+    if not extipa_phrases:
+        return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "phrases": []}
+
+    audio_segments = []
+    telemetry_segments = []
     current_time_ms = 0.0
 
-    for s_idx, syl in enumerate(script.utterance):
-        syl_start_ms = current_time_ms
-        dur_ms = syl.duration_ms or sum(p.duration_ms for p in syl.phonemes) or 300.0
-        n_samples = max(1, int((dur_ms / 1000.0) * sample_rate))
+    # 2. Synthesize Each ExtIPA Phrase & Break Along the Cursive Timeline
+    for p_idx, phrase in enumerate(extipa_phrases):
+        seg_start_ms = current_time_ms
 
-        # Check for physical sound components
-        physical_segments = [p for p in syl.phonemes if is_pure_physical_sound(p.symbol) or p.type == "creature"]
-        vocal_text = extract_vocalic_text(syl)
+        # --- A. Glottal Stop / Phrase Break ("Lifting the pen") ---
+        if phrase.is_break:
+            silence_dur_s = phrase.break_duration_ms / 1000.0
+            seg_audio = np.zeros(int(silence_dur_s * sample_rate), dtype=np.float32)
+            dur_ms = phrase.break_duration_ms
 
-        syl_audio = np.zeros(0, dtype=np.float32)
+        # --- B. Speech Phrase / Cursive Compound ---
+        else:
+            p_text = phrase.phonetic_text
+            if not p_text:
+                continue
 
-        # 1. Synthesize Physical Elements (Clicks, Ejectives, Bioacoustics)
-        if physical_segments:
-            p_first = physical_segments[0]
-            sym = p_first.symbol.lower().strip()
-            cat = p_first.category or sym
+            # Render phrase via Neural Vocoder
+            seg_audio = await synthesize_neural_text_async(p_text, voice_id, pitch_hz_offset=0.0, speed_rate=speed_rate)
 
-            if "click" in sym or sym in CLICK_SYMBOLS:
-                phys_audio = synthesize_click_burst(sym, int(0.035 * sample_rate), sample_rate)
-            elif "ejective" in sym or sym in EJECTIVE_SYMBOLS:
-                phys_audio = synthesize_ejective_burst(sym, int(0.045 * sample_rate), sample_rate)
-            elif cat == "feline_purr" or sym == "feline_purr":
-                phys_audio = synthesize_feline_purr(n_samples, sample_rate, rate_hz=p_first.rate_hz or 24.5, depth=p_first.intensity or 0.90)
-            elif cat == "feline_growl" or sym == "feline_growl":
-                phys_audio = synthesize_feline_growl(n_samples, sample_rate, base_f0=base_f0, intensity=p_first.intensity or 0.90, subharmonic_depth=p_first.subharmonic_depth or 0.80)
-            elif cat == "feline_hiss" or sym == "feline_hiss":
-                phys_audio = synthesize_feline_hiss(n_samples, sample_rate, intensity=p_first.intensity or 0.90)
-            elif cat == "canine_snarl" or sym == "canine_snarl":
-                phys_audio = synthesize_canine_snarl(n_samples, sample_rate, base_f0=base_f0, flutter_hz=p_first.rate_hz or 48.0, roughness=p_first.intensity or 0.85)
-            elif cat == "canine_bark" or sym == "canine_bark":
-                phys_audio = synthesize_canine_bark(n_samples, sample_rate, base_f0=base_f0)
-            elif cat == "canine_whine" or sym == "canine_whine":
-                phys_audio = synthesize_canine_whine(n_samples, sample_rate, base_f0=base_f0)
-            elif sym in GLOTTAL_SYMBOLS:
-                phys_audio = np.zeros(int(0.025 * sample_rate), dtype=np.float32)
-            else:
-                phys_audio = synthesize_feline_growl(n_samples, sample_rate, base_f0=base_f0)
+            # If phrase contains a click onset (e.g. kǀi, kǃa), overlay sharp velaric click shockwave at t=0
+            if phrase.has_click and len(seg_audio) > 0:
+                click_burst = synthesize_click_burst(phrase.click_type or "click_alveolar", int(0.025 * sample_rate), sample_rate)
+                blend_len = min(len(click_burst), len(seg_audio))
+                seg_audio[:blend_len] = seg_audio[:blend_len] * 0.35 + click_burst[:blend_len] * 1.25
 
-            # If there is also a vocalic sound in this syllable (e.g. click + vowel [kǀi]), blend seamlessly!
-            if vocal_text:
-                vowel_audio = await synthesize_neural_text_async(vocal_text, voice_id, pitch_hz_offset=0.0)
-                if len(vowel_audio) > 0:
-                    # Layer the physical click burst right onto the attack of the vowel onset (integrated coarticulation!)
-                    blend_len = min(len(phys_audio), len(vowel_audio))
-                    syl_audio = np.copy(vowel_audio)
-                    syl_audio[:blend_len] = syl_audio[:blend_len] * 0.35 + phys_audio[:blend_len] * 1.2
-                else:
-                    syl_audio = phys_audio
-            else:
-                syl_audio = phys_audio
+            # Apply Bioacoustic ExtIPA Phonation Modifiers (Growl, Purr, Snarl, Whisper)
+            if phrase.phonation and phrase.phonation != "modal":
+                seg_audio = apply_bioacoustic_phonation_modifier(seg_audio, phrase.phonation, base_f0, sample_rate)
 
-        # 2. Pure Vocalic / Consonantal Human Phonetic Syllable
-        elif vocal_text:
-            syl_audio = await synthesize_neural_text_async(vocal_text, voice_id, pitch_hz_offset=0.0)
+            # Gentle edge smoothing (3ms) to ensure continuous cursive flow without boundary clicks
+            if len(seg_audio) > 128:
+                fade_len = int(0.003 * sample_rate)
+                seg_audio[:fade_len] *= np.linspace(0.0, 1.0, fade_len)
+                seg_audio[-fade_len:] *= np.linspace(1.0, 0.0, fade_len)
 
-        # Fallback if empty
-        if len(syl_audio) == 0:
-            syl_audio = np.zeros(int(0.20 * sample_rate), dtype=np.float32)
+            dur_ms = (len(seg_audio) / sample_rate) * 1000.0
 
-        # Volume balance
-        max_p = np.max(np.abs(syl_audio))
-        if max_p > 0.01:
-            syl_audio = (syl_audio / max_p) * 0.85
-
-        syllable_audio_segments.append(syl_audio)
-        dur_ms = (len(syl_audio) / sample_rate) * 1000.0
-        syllable_telemetry.append({
-            "syllable": syl.label or f"syl_{s_idx + 1}",
-            "start_ms": syl_start_ms,
+        audio_segments.append(seg_audio)
+        telemetry_segments.append({
+            "phrase": phrase.raw_text,
+            "phonetic": phrase.phonetic_text,
+            "start_ms": seg_start_ms,
             "duration_ms": dur_ms,
-            "tone": syl.prosody.chao_tone or "custom",
-            "phonation": syl.prosody.phonation or "modal",
+            "phonation": phrase.phonation,
+            "tone": phrase.chao_tone or "modal",
         })
         current_time_ms += dur_ms
 
-    if not syllable_audio_segments:
-        return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "syllables": []}
+    if not audio_segments:
+        return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "phrases": []}
 
-    full_audio = np.concatenate(syllable_audio_segments)
+    full_audio = np.concatenate(audio_segments)
 
     # Master normalization
     max_peak = np.max(np.abs(full_audio)) + 1e-6
@@ -265,8 +271,8 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
     telemetry = {
         "duration_sec": float(len(normalized_audio) / sample_rate),
         "total_samples": len(normalized_audio),
-        "syllables": syllable_telemetry,
-        "engine": "Neural-Bioacoustic Hybrid (Studio Quality)",
+        "phrases": telemetry_segments,
+        "engine": "Universal ExtIPA Neural Vocoder (Studio Quality)",
         "neural_voice": voice_id,
     }
 
