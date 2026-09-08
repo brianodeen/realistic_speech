@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("speakerNameBadge").textContent = `Speaker: ${spk.name || "Default"}`;
 
         pitchCanvas.setSpeaker(spk.base_pitch_hz, spk.pitch_range_semitones);
-        timeline.setUtterance(currentScript.utterance);
+        timeline.setScript(currentScript);
         pitchCanvas.setSyllableProsody(timeline.getActiveSyllable()?.prosody);
         yamlSync.updateFromState(currentScript);
     }
@@ -325,6 +325,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 select.value = presets[0].id;
                 currentScript = presets[0].json_data;
                 syncUIToState();
+                const mode = document.getElementById("selectEngineMode")?.value || "neural";
+                updateEvalContext(presets[0], mode, currentScript);
             }
         } catch (e) {
             console.error("Failed to load presets:", e);
@@ -337,6 +339,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (p) {
             currentScript = JSON.parse(JSON.stringify(p.json_data));
             syncUIToState();
+            const mode = document.getElementById("selectEngineMode")?.value || "neural";
+            updateEvalContext(p, mode, currentScript);
         }
     });
 
@@ -452,10 +456,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // ==========================================================================
-    // 14. 1-10 Evaluation & ElevenLabs-Parity Quality Benchmark System
+    // 14. 1-10 Evaluation & ElevenLabs-Parity Quality Benchmark System (Per-Preset)
     // ==========================================================================
-    const evalState = {
-        scores: {
+    const presetFeedbackStore = {};
+    let activeFeedbackPresetId = "custom";
+
+    function getCleanPresetScores() {
+        return {
             smoothness: 8,
             realism: 8,
             pronunciation: 9,
@@ -463,7 +470,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             bioacoustics: null, // null for N/A
             cleanliness: 9,
             elevenlabs_parity: 8,
-        },
+        };
+    }
+
+    const evalState = {
+        scores: getCleanPresetScores(),
         tags: new Set(),
         lastSynthesisInfo: {
             preset_id: "custom",
@@ -474,16 +485,93 @@ document.addEventListener("DOMContentLoaded", async () => {
         },
     };
 
-    function updateEvalContext(presetObj, engineMode, scriptObj) {
-        if (presetObj) {
-            evalState.lastSynthesisInfo.preset_id = presetObj.id;
-            evalState.lastSynthesisInfo.preset_name = presetObj.name;
-            evalState.lastSynthesisInfo.language = presetObj.language || presetObj.name;
+    function syncCurrentPresetFeedbackToStore() {
+        if (!activeFeedbackPresetId) return;
+        const notes = document.getElementById("evalNotesTextarea")?.value || "";
+        presetFeedbackStore[activeFeedbackPresetId] = {
+            scores: { ...evalState.scores },
+            tags: new Set(evalState.tags),
+            notes: notes,
+            preset_name: evalState.lastSynthesisInfo.preset_name,
+            language: evalState.lastSynthesisInfo.language,
+        };
+    }
+
+    function applyScoresToUI(scores) {
+        evalState.scores = { ...scores };
+        const metrics = [
+            { id: "smoothness", badgeId: "valSmoothness" },
+            { id: "realism", badgeId: "valRealism" },
+            { id: "pronunciation", badgeId: "valPronunciation" },
+            { id: "prosody", badgeId: "valProsody" },
+            { id: "bioacoustics", badgeId: "valBioacoustics" },
+            { id: "cleanliness", badgeId: "valCleanliness" },
+            { id: "elevenlabs_parity", badgeId: "valParity" },
+        ];
+
+        metrics.forEach(m => {
+            const container = document.querySelector(`.pill-rating-group[data-metric="${m.id}"]`);
+            if (!container) return;
+            const val = scores[m.id];
+
+            container.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+            if (val === null || val === undefined) {
+                const naBtn = container.querySelector(".pill-na");
+                if (naBtn) naBtn.classList.add("active");
+                const badge = document.getElementById(m.badgeId);
+                if (badge) badge.textContent = "N/A";
+            } else {
+                const btn = container.querySelector(`.pill-btn[data-score="${val}"]`);
+                if (btn) btn.classList.add("active");
+                const badge = document.getElementById(m.badgeId);
+                if (badge) badge.textContent = `${val}/10`;
+            }
+        });
+    }
+
+    function applyTagsToUI(tagSet) {
+        evalState.tags = new Set(tagSet || []);
+        document.querySelectorAll(".eval-tag-chip").forEach(chip => {
+            const tag = chip.getAttribute("data-tag");
+            if (evalState.tags.has(tag)) {
+                chip.classList.add("selected");
+            } else {
+                chip.classList.remove("selected");
+            }
+        });
+    }
+
+    function loadPresetFeedback(presetId, presetName) {
+        activeFeedbackPresetId = presetId || "custom";
+        const saved = presetFeedbackStore[presetId];
+
+        if (saved) {
+            applyScoresToUI(saved.scores || getCleanPresetScores());
+            applyTagsToUI(saved.tags || []);
+            const notesEl = document.getElementById("evalNotesTextarea");
+            if (notesEl) notesEl.value = saved.notes || "";
+            setEvalBadge(`${presetName || presetId} [Saved Feedback]`);
         } else {
-            evalState.lastSynthesisInfo.preset_id = "custom";
-            evalState.lastSynthesisInfo.preset_name = currentScript.language || "Custom Script";
-            evalState.lastSynthesisInfo.language = currentScript.language || "Conlang";
+            applyScoresToUI(getCleanPresetScores());
+            applyTagsToUI([]);
+            const notesEl = document.getElementById("evalNotesTextarea");
+            if (notesEl) notesEl.value = "";
+            setEvalBadge(`${presetName || presetId} [Not Yet Rated]`);
+            syncCurrentPresetFeedbackToStore();
         }
+    }
+
+    function setEvalBadge(text) {
+        const badge = document.getElementById("evalContextBadge");
+        if (badge) badge.textContent = text;
+    }
+
+    function updateEvalContext(presetObj, engineMode, scriptObj) {
+        const presetId = presetObj ? presetObj.id : "custom";
+        const presetName = presetObj ? presetObj.name : (currentScript.language || "Custom Script");
+        evalState.lastSynthesisInfo.preset_id = presetId;
+        evalState.lastSynthesisInfo.preset_name = presetName;
+        evalState.lastSynthesisInfo.language = presetObj ? (presetObj.language || presetObj.name) : (currentScript.language || "Conlang");
         evalState.lastSynthesisInfo.engine_mode = engineMode;
 
         if (scriptObj.script) {
@@ -492,10 +580,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             evalState.lastSynthesisInfo.script_text = JSON.stringify(scriptObj.utterance || []);
         }
 
-        const badge = document.getElementById("evalContextBadge");
-        if (badge) {
-            badge.textContent = `${evalState.lastSynthesisInfo.preset_name} [${engineMode.toUpperCase()}]`;
-        }
+        loadPresetFeedback(presetId, presetName);
     }
 
     // Initialize 1-10 Pill Rating Groups
@@ -527,6 +612,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     naBtn.classList.add("active");
                     const badge = document.getElementById(m.badgeId);
                     if (badge) badge.textContent = "N/A";
+                    syncCurrentPresetFeedbackToStore();
                 });
                 container.appendChild(naBtn);
             }
@@ -544,6 +630,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     btn.classList.add("active");
                     const badge = document.getElementById(m.badgeId);
                     if (badge) badge.textContent = `${i}/10`;
+                    syncCurrentPresetFeedbackToStore();
                 });
                 container.appendChild(btn);
             }
@@ -566,8 +653,38 @@ document.addEventListener("DOMContentLoaded", async () => {
                 chip.classList.add("selected");
                 evalState.tags.add(tag);
             }
+            syncCurrentPresetFeedbackToStore();
         });
     });
+
+    // Notes live sync to per-preset store
+    document.getElementById("evalNotesTextarea")?.addEventListener("input", () => {
+        syncCurrentPresetFeedbackToStore();
+    });
+
+    // Load initial feedback from API to populate per-preset store
+    async function populateFeedbackStoreFromBackend() {
+        try {
+            const res = await fetch("/api/feedback");
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = data.evaluations || [];
+            // Evaluations are newest first
+            list.forEach(r => {
+                if (r.preset_id && !presetFeedbackStore[r.preset_id]) {
+                    presetFeedbackStore[r.preset_id] = {
+                        scores: r.scores || getCleanPresetScores(),
+                        tags: new Set(r.tags || []),
+                        notes: r.notes || "",
+                        preset_name: r.preset_name,
+                        language: r.language,
+                    };
+                }
+            });
+        } catch (e) {
+            console.warn("Could not pre-populate feedback store:", e);
+        }
+    }
 
     // Submit Evaluation Handler
     async function submitEvaluation() {
@@ -578,6 +695,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`;
         statusEl.textContent = "";
+
+        syncCurrentPresetFeedbackToStore();
 
         const payload = {
             preset_id: evalState.lastSynthesisInfo.preset_id,
@@ -604,12 +723,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             statusEl.className = "eval-status-message success";
-            statusEl.textContent = "✓ Evaluation saved successfully!";
-
-            // Reset notes and tags
-            document.getElementById("evalNotesTextarea").value = "";
-            document.querySelectorAll(".eval-tag-chip").forEach(c => c.classList.remove("selected"));
-            evalState.tags.clear();
+            statusEl.textContent = "✓ Evaluation saved successfully for this preset!";
+            setEvalBadge(`${evalState.lastSynthesisInfo.preset_name} [Feedback Saved ✓]`);
 
             await updateEvaluationCounters();
 
@@ -763,16 +878,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Initial load
     initRatingPills();
+    await populateFeedbackStoreFromBackend();
     await loadSymbols();
     await loadPresets();
     await updateEvaluationCounters();
-
-    // Hook preset changes to evaluation context
-    document.getElementById("presetSelect")?.addEventListener("change", (e) => {
-        const p = presets.find(item => item.id === e.target.value);
-        const mode = document.getElementById("selectEngineMode")?.value || "neural";
-        if (p) updateEvalContext(p, mode, p.json_data);
-    });
 
     // Hook engine mode changes to evaluation context
     document.getElementById("selectEngineMode")?.addEventListener("change", (e) => {

@@ -437,6 +437,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background: rgba(0, 240, 255, 0.1);
 }
 
+.phoneme-chip.chip-tie {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.syllable-block.syllable-break {
+    border: 1px dashed rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.05);
+    min-width: 140px;
+}
+
+.syl-label-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    font-weight: 700;
+    min-width: 80px;
+    max-width: 160px;
+    font-family: var(--font-mono);
+}
+
 .chip-name {
     font-family: var(--font-mono);
     font-weight: 600;
