@@ -6,3 +6,12 @@ from .schema import ConlangScript, Syllable, PhonemeSegment, SpeakerProfile, Pro
 from .synthesizer import synthesize_script, audio_to_wav_bytes, SAMPLE_RATE
 from .neural_synthesizer import synthesize_neural_script, synthesize_neural_script_async
 from .articulatory import get_all_symbols_metadata, VOWEL_TABLE, CONSONANT_TABLE, CREATURE_TABLE
+from .feedback import (
+    MetricScores,
+    EvaluationSubmission,
+    EvaluationRecord,
+    save_evaluation,
+    load_evaluations,
+    delete_evaluation,
+    get_evaluation_summary,
+)

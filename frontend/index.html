@@ -52,6 +52,9 @@
                 <button id="btnExportYaml" class="btn btn-outline" title="Save YAML Conlang Script">
                     <i class="fa-solid fa-file-code"></i> Save Script
                 </button>
+                <button id="btnHeaderEvalHistory" class="btn btn-outline" title="View 1-10 Evaluation History & Quality Benchmarks">
+                    <i class="fa-solid fa-star-half-stroke"></i> Evaluations <span id="evalCountBadge" class="eval-counter-pill">0</span>
+                </button>
                 <button id="btnReferenceModal" class="btn btn-icon" title="View Extended IPA & Creature Reference Guide">
                     <i class="fa-solid fa-book-open"></i> Reference
                 </button>
@@ -206,6 +209,135 @@
                     </div>
                 </section>
 
+                <!-- EVALUATION & ELEVENLABS-PARITY QUALITY BENCHMARK CARD (1-10) -->
+                <section class="studio-card eval-card" id="evaluationCard">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-star-half-stroke"></i> Quality Benchmark & Feedback (1–10 Scale)</h2>
+                        <div class="eval-header-right">
+                            <span id="evalContextBadge" class="badge">Target: ElevenLabs Parity</span>
+                            <button id="btnOpenEvalHistory" class="btn btn-xs btn-outline" title="View Evaluation History & Benchmark Trends">
+                                <i class="fa-solid fa-clock-rotate-left"></i> History (<span id="evalHistoryCountText">0</span>)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="eval-body">
+                        <div class="eval-metrics-grid">
+                            <!-- 1. Smoothness & Cursive Flow -->
+                            <div class="eval-metric-row" data-metric="smoothness">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Smoothness & Cursive Flow</span>
+                                        <span class="metric-val-badge" id="valSmoothness">8/10</span>
+                                    </div>
+                                    <span class="metric-desc">Liquid ligature transitions, absence of choppy gaps or word stutter</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="smoothness"></div>
+                            </div>
+
+                            <!-- 2. Realism & Fleshiness -->
+                            <div class="eval-metric-row" data-metric="realism">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Human Realism & Fleshiness</span>
+                                        <span class="metric-val-badge" id="valRealism">8/10</span>
+                                    </div>
+                                    <span class="metric-desc">Organic vocal tract warmth, breath dynamics, zero metallic or robotic buzz</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="realism"></div>
+                            </div>
+
+                            <!-- 3. Pronunciation & Articulatory Precision -->
+                            <div class="eval-metric-row" data-metric="pronunciation">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Pronunciation Precision</span>
+                                        <span class="metric-val-badge" id="valPronunciation">9/10</span>
+                                    </div>
+                                    <span class="metric-desc">ExtIPA phonemes, clicks [kǀ, kǃ, kǁ], ejectives, vowels without letter-reading</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="pronunciation"></div>
+                            </div>
+
+                            <!-- 4. Prosody & Intonation Expressiveness -->
+                            <div class="eval-metric-row" data-metric="prosody">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Prosody & Intonation</span>
+                                        <span class="metric-val-badge" id="valProsody">8/10</span>
+                                    </div>
+                                    <span class="metric-desc">Dynamic Chao tones, natural melodic inflection, zero monotone or helium pitch</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="prosody"></div>
+                            </div>
+
+                            <!-- 5. Extended Bioacoustic & Alien Authenticity -->
+                            <div class="eval-metric-row" data-metric="bioacoustics">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Bioacoustics & Alien Textures</span>
+                                        <span class="metric-val-badge" id="valBioacoustics">N/A</span>
+                                    </div>
+                                    <span class="metric-desc">Realism of growls, purrs, snarls, barks, whines, and xenoglossic textures</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="bioacoustics"></div>
+                            </div>
+
+                            <!-- 6. Acoustic Cleanliness & Clarity -->
+                            <div class="eval-metric-row" data-metric="cleanliness">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name">Acoustic Cleanliness & Clarity</span>
+                                        <span class="metric-val-badge" id="valCleanliness">9/10</span>
+                                    </div>
+                                    <span class="metric-desc">44.1kHz studio presence, crisp signal-to-noise ratio, zero distortion or clipping</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="cleanliness"></div>
+                            </div>
+
+                            <!-- 7. Overall ElevenLabs-Parity Benchmark -->
+                            <div class="eval-metric-row benchmark-row" data-metric="elevenlabs_parity">
+                                <div class="metric-info">
+                                    <div class="metric-title-line">
+                                        <span class="metric-name"><i class="fa-solid fa-crown" style="color: #f59e0b;"></i> Overall ElevenLabs-Parity Score</span>
+                                        <span class="metric-val-badge parity-badge" id="valParity">8/10</span>
+                                    </div>
+                                    <span class="metric-desc">Commercial studio voice-actor comparison (1=Robotic toy, 8=Broadcast quality, 10=True ElevenLabs parity)</span>
+                                </div>
+                                <div class="pill-rating-group" data-metric="elevenlabs_parity"></div>
+                            </div>
+                        </div>
+
+                        <!-- Diagnostic Issue Tags -->
+                        <div class="eval-tags-section">
+                            <label class="eval-section-label">Diagnostic Issue Flags (Click all that apply):</label>
+                            <div class="eval-tags-list" id="evalIssueTagsContainer">
+                                <button type="button" class="eval-tag-chip" data-tag="Choppy / Unwanted Inter-word Gap">Choppy Inter-word Gap</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Metallic / Robotic Buzz">Metallic / Robotic Buzz</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Muffled / Choked Presence">Muffled Presence</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Pitch Too High / Helium Chipmunk">Pitch Too High (Helium)</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Disconnected Click / Ejective">Disconnected Click</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Repeated Vowel Stutter (e.g. awoooo)">Repeated Vowel Stutter</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Mispronounced Phoneme">Mispronounced Sound</button>
+                                <button type="button" class="eval-tag-chip" data-tag="Unnatural Creature Texture">Unnatural Creature Texture</button>
+                            </div>
+                        </div>
+
+                        <!-- Qualitative Notes -->
+                        <div class="eval-notes-section">
+                            <label class="eval-section-label" for="evalNotesTextarea">Detailed Notes & Feedback for Improvement:</label>
+                            <textarea id="evalNotesTextarea" class="eval-notes-input" placeholder="e.g. The liaison between 'wiː' and 'sɔː' was smooth, but dental click release needs more velar burst... (Press Ctrl+Enter to submit)"></textarea>
+                        </div>
+
+                        <!-- Submit Bar -->
+                        <div class="eval-action-bar">
+                            <button type="button" id="btnSubmitEvaluation" class="btn btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> Submit Evaluation & Feedback
+                            </button>
+                            <span id="evalSubmitStatus" class="eval-status-message"></span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- BI-DIRECTIONAL CODE EDITOR -->
                 <section class="studio-card code-card">
                     <div class="card-header">
@@ -298,6 +430,70 @@
                     <div class="reference-section">
                         <h3>4. Chao 5-Level Tones (Mandarin & Tonal Conlangs)</h3>
                         <p><code>55</code> (High Flat), <code>35</code> (Rising), <code>214</code> (Dipping), <code>51</code> (Falling), <code>33</code> (Mid), <code>11</code> (Deep Base).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: EVALUATION HISTORY & ELEVENLABS QUALITY BENCHMARKS -->
+        <div id="evalHistoryModal" class="modal-backdrop">
+            <div class="modal-window modal-wide">
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-clock-rotate-left"></i> Evaluation History & Quality Benchmarks</h2>
+                    <button id="btnCloseEvalHistory" class="modal-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Summary Stats Cards -->
+                    <div class="eval-summary-grid" id="evalSummaryCardsContainer">
+                        <div class="summary-card">
+                            <span class="summary-card-label">Total Evaluations</span>
+                            <span class="summary-card-val" id="summaryTotalCount">0</span>
+                        </div>
+                        <div class="summary-card highlight-card">
+                            <span class="summary-card-label">Avg ElevenLabs Parity</span>
+                            <span class="summary-card-val" id="summaryAvgParity">0.0 / 10</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-card-label">Avg Smoothness / Flow</span>
+                            <span class="summary-card-val" id="summaryAvgSmoothness">0.0 / 10</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-card-label">Avg Realism / Fleshiness</span>
+                            <span class="summary-card-val" id="summaryAvgRealism">0.0 / 10</span>
+                        </div>
+                    </div>
+
+                    <!-- Filter Controls -->
+                    <div class="history-filter-bar">
+                        <div class="filter-group">
+                            <label for="selHistoryPresetFilter">Filter by Preset:</label>
+                            <select id="selHistoryPresetFilter" class="studio-select">
+                                <option value="">All Presets & Languages</option>
+                            </select>
+                        </div>
+                        <button id="btnRefreshHistory" class="btn btn-xs btn-outline"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                    </div>
+
+                    <!-- History Records Table -->
+                    <div class="history-table-wrapper">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Preset / Language</th>
+                                    <th>Mode</th>
+                                    <th>Parity</th>
+                                    <th>Flow</th>
+                                    <th>Realism</th>
+                                    <th>Pronun.</th>
+                                    <th>Notes & Tags</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="evalHistoryTableBody">
+                                <tr><td colspan="9" style="text-align: center; color: var(--text-dim);">No evaluations recorded yet.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

@@ -893,3 +893,401 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .reference-section ul {
     padding-left: 20px;
 }
+
+/* ==========================================================================
+   Evaluation & ElevenLabs Benchmark Card (1-10 Scale)
+   ========================================================================== */
+.eval-card {
+    border-top: 2px solid rgba(245, 158, 11, 0.4);
+}
+
+.eval-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.eval-counter-pill {
+    background: #f59e0b;
+    color: #0b0f19;
+    font-weight: 700;
+    font-size: 0.68rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+}
+
+.eval-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: rgba(11, 15, 25, 0.6);
+}
+
+.eval-metrics-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.eval-metric-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(16, 22, 34, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.1);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.eval-metric-row:hover {
+    border-color: rgba(56, 189, 248, 0.25);
+    background: rgba(16, 22, 34, 0.9);
+}
+
+.eval-metric-row.benchmark-row {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(30, 24, 15, 0.35);
+}
+
+.eval-metric-row.benchmark-row:hover {
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.metric-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metric-title-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.metric-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.metric-desc {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+}
+
+.metric-val-badge {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.metric-val-badge.parity-badge {
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.pill-rating-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    padding-top: 2px;
+}
+
+.pill-btn {
+    flex: 1;
+    min-width: 26px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.70rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.pill-btn:hover {
+    border-color: #38bdf8;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* 1-10 Pill Color Categories */
+.pill-btn[data-score="1"].active, .pill-btn[data-score="2"].active, .pill-btn[data-score="3"].active {
+    background: #f43f5e;
+    border-color: #f43f5e;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
+}
+
+.pill-btn[data-score="4"].active, .pill-btn[data-score="5"].active, .pill-btn[data-score="6"].active {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: #0b0f19;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.pill-btn[data-score="7"].active, .pill-btn[data-score="8"].active {
+    background: #06b6d4;
+    border-color: #06b6d4;
+    color: #0b0f19;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+}
+
+.pill-btn[data-score="9"].active, .pill-btn[data-score="10"].active {
+    background: #10b981;
+    border-color: #10b981;
+    color: #0b0f19;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.pill-btn.pill-na {
+    min-width: 34px;
+}
+
+.pill-btn.pill-na.active {
+    background: var(--bg-card-header);
+    border-color: var(--text-muted);
+    color: #fff;
+}
+
+/* Diagnostic Tags */
+.eval-tags-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.eval-section-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.eval-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.eval-tag-chip {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.eval-tag-chip:hover {
+    border-color: #f43f5e;
+    color: #f43f5e;
+}
+
+.eval-tag-chip.selected {
+    background: rgba(244, 63, 94, 0.18);
+    border-color: #f43f5e;
+    color: #fb7185;
+    font-weight: 600;
+}
+
+/* Qualitative Notes */
+.eval-notes-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.eval-notes-input {
+    width: 100%;
+    min-height: 52px;
+    background: #080c14;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 0.75rem;
+    padding: 8px 10px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.4;
+    font-family: var(--font-sans);
+}
+
+.eval-notes-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+}
+
+/* Submit Action Bar */
+.eval-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.eval-status-message {
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+.eval-status-message.success {
+    color: #10b981;
+}
+
+.eval-status-message.error {
+    color: #f43f5e;
+}
+
+/* Modal Wide & Summary Grid */
+.modal-window.modal-wide {
+    max-width: 960px;
+    width: 95%;
+}
+
+.eval-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.summary-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-card.highlight-card {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.summary-card-label {
+    font-size: 0.70rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.summary-card-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    color: var(--accent-cyan);
+}
+
+.summary-card.highlight-card .summary-card-val {
+    color: #f59e0b;
+}
+
+.history-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.history-filter-bar .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+}
+
+.history-table-wrapper {
+    overflow-x: auto;
+    max-height: 380px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    text-align: left;
+}
+
+.history-table th {
+    background: var(--bg-card-header);
+    padding: 8px 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.history-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: top;
+}
+
+.history-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.score-badge {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.70rem;
+    display: inline-block;
+}
+
+.score-high {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.score-mid {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.score-low {
+    background: rgba(244, 63, 94, 0.15);
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.btn-delete-eval {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 2px 4px;
+}
+
+.btn-delete-eval:hover {
+    color: var(--accent-rose);
+}

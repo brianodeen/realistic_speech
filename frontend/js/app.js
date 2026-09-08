@@ -378,6 +378,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             document.getElementById("audioDurationText").textContent = `${playRes.duration.toFixed(2)}s`;
 
+            // Update evaluation context with current synthesis parameters
+            const presetId = document.getElementById("presetSelect")?.value;
+            const activePreset = presets.find(item => item.id === presetId);
+            updateEvalContext(activePreset, engineMode, currentScript);
+
         } catch (err) {
             alert(`Synthesis Error: ${err.message}`);
         } finally {
@@ -446,7 +451,334 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (e.target === modal) modal.classList.remove("open");
     });
 
+    // ==========================================================================
+    // 14. 1-10 Evaluation & ElevenLabs-Parity Quality Benchmark System
+    // ==========================================================================
+    const evalState = {
+        scores: {
+            smoothness: 8,
+            realism: 8,
+            pronunciation: 9,
+            prosody: 8,
+            bioacoustics: null, // null for N/A
+            cleanliness: 9,
+            elevenlabs_parity: 8,
+        },
+        tags: new Set(),
+        lastSynthesisInfo: {
+            preset_id: "custom",
+            preset_name: "Custom Script",
+            language: "Conlang",
+            engine_mode: "neural",
+            script_text: "",
+        },
+    };
+
+    function updateEvalContext(presetObj, engineMode, scriptObj) {
+        if (presetObj) {
+            evalState.lastSynthesisInfo.preset_id = presetObj.id;
+            evalState.lastSynthesisInfo.preset_name = presetObj.name;
+            evalState.lastSynthesisInfo.language = presetObj.language || presetObj.name;
+        } else {
+            evalState.lastSynthesisInfo.preset_id = "custom";
+            evalState.lastSynthesisInfo.preset_name = currentScript.language || "Custom Script";
+            evalState.lastSynthesisInfo.language = currentScript.language || "Conlang";
+        }
+        evalState.lastSynthesisInfo.engine_mode = engineMode;
+
+        if (scriptObj.script) {
+            evalState.lastSynthesisInfo.script_text = typeof scriptObj.script === "string" ? scriptObj.script : scriptObj.script.join(" ");
+        } else {
+            evalState.lastSynthesisInfo.script_text = JSON.stringify(scriptObj.utterance || []);
+        }
+
+        const badge = document.getElementById("evalContextBadge");
+        if (badge) {
+            badge.textContent = `${evalState.lastSynthesisInfo.preset_name} [${engineMode.toUpperCase()}]`;
+        }
+    }
+
+    // Initialize 1-10 Pill Rating Groups
+    function initRatingPills() {
+        const metrics = [
+            { id: "smoothness", defaultVal: 8, hasNA: false, badgeId: "valSmoothness" },
+            { id: "realism", defaultVal: 8, hasNA: false, badgeId: "valRealism" },
+            { id: "pronunciation", defaultVal: 9, hasNA: false, badgeId: "valPronunciation" },
+            { id: "prosody", defaultVal: 8, hasNA: false, badgeId: "valProsody" },
+            { id: "bioacoustics", defaultVal: null, hasNA: true, badgeId: "valBioacoustics" },
+            { id: "cleanliness", defaultVal: 9, hasNA: false, badgeId: "valCleanliness" },
+            { id: "elevenlabs_parity", defaultVal: 8, hasNA: false, badgeId: "valParity" },
+        ];
+
+        metrics.forEach(m => {
+            const container = document.querySelector(`.pill-rating-group[data-metric="${m.id}"]`);
+            if (!container) return;
+            container.innerHTML = "";
+
+            if (m.hasNA) {
+                const naBtn = document.createElement("button");
+                naBtn.type = "button";
+                naBtn.className = `pill-btn pill-na ${m.defaultVal === null ? "active" : ""}`;
+                naBtn.textContent = "N/A";
+                naBtn.title = "Not applicable for human-only scripts";
+                naBtn.addEventListener("click", () => {
+                    evalState.scores[m.id] = null;
+                    container.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+                    naBtn.classList.add("active");
+                    const badge = document.getElementById(m.badgeId);
+                    if (badge) badge.textContent = "N/A";
+                });
+                container.appendChild(naBtn);
+            }
+
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = `pill-btn ${m.defaultVal === i ? "active" : ""}`;
+                btn.setAttribute("data-score", i);
+                btn.textContent = i;
+                btn.title = `Score: ${i}/10`;
+                btn.addEventListener("click", () => {
+                    evalState.scores[m.id] = i;
+                    container.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    const badge = document.getElementById(m.badgeId);
+                    if (badge) badge.textContent = `${i}/10`;
+                });
+                container.appendChild(btn);
+            }
+
+            const badge = document.getElementById(m.badgeId);
+            if (badge) {
+                badge.textContent = m.defaultVal === null ? "N/A" : `${m.defaultVal}/10`;
+            }
+        });
+    }
+
+    // Diagnostic Issue Tag Toggles
+    document.querySelectorAll(".eval-tag-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            const tag = chip.getAttribute("data-tag");
+            if (chip.classList.contains("selected")) {
+                chip.classList.remove("selected");
+                evalState.tags.delete(tag);
+            } else {
+                chip.classList.add("selected");
+                evalState.tags.add(tag);
+            }
+        });
+    });
+
+    // Submit Evaluation Handler
+    async function submitEvaluation() {
+        const btn = document.getElementById("btnSubmitEvaluation");
+        const statusEl = document.getElementById("evalSubmitStatus");
+        const notes = document.getElementById("evalNotesTextarea").value.trim();
+
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`;
+        statusEl.textContent = "";
+
+        const payload = {
+            preset_id: evalState.lastSynthesisInfo.preset_id,
+            preset_name: evalState.lastSynthesisInfo.preset_name,
+            language: evalState.lastSynthesisInfo.language,
+            engine_mode: evalState.lastSynthesisInfo.engine_mode,
+            script_text: evalState.lastSynthesisInfo.script_text || "",
+            scores: evalState.scores,
+            tags: Array.from(evalState.tags),
+            notes: notes,
+            speaker_params: currentScript.speaker || {},
+        };
+
+        try {
+            const res = await fetch("/api/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Submission failed");
+            }
+
+            statusEl.className = "eval-status-message success";
+            statusEl.textContent = "✓ Evaluation saved successfully!";
+
+            // Reset notes and tags
+            document.getElementById("evalNotesTextarea").value = "";
+            document.querySelectorAll(".eval-tag-chip").forEach(c => c.classList.remove("selected"));
+            evalState.tags.clear();
+
+            await updateEvaluationCounters();
+
+            setTimeout(() => {
+                statusEl.textContent = "";
+            }, 4000);
+        } catch (err) {
+            statusEl.className = "eval-status-message error";
+            statusEl.textContent = `Error: ${err.message}`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Evaluation & Feedback`;
+        }
+    }
+
+    document.getElementById("btnSubmitEvaluation").addEventListener("click", submitEvaluation);
+
+    // Ctrl+Enter to submit notes
+    document.getElementById("evalNotesTextarea").addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            submitEvaluation();
+        }
+    });
+
+    // Update Evaluation Counters in UI
+    async function updateEvaluationCounters() {
+        try {
+            const res = await fetch("/api/feedback/summary");
+            if (!res.ok) return;
+            const data = await res.json();
+            const summary = data.summary || {};
+            const total = summary.total_evaluations || 0;
+
+            const badge1 = document.getElementById("evalCountBadge");
+            const badge2 = document.getElementById("evalHistoryCountText");
+            if (badge1) badge1.textContent = total;
+            if (badge2) badge2.textContent = total;
+        } catch (e) {
+            console.warn("Could not fetch feedback summary:", e);
+        }
+    }
+
+    // ==========================================================================
+    // 15. Evaluation History & Benchmark Trends Modal
+    // ==========================================================================
+    const historyModal = document.getElementById("evalHistoryModal");
+
+    async function openHistoryModal() {
+        historyModal.classList.add("open");
+        await loadAndRenderHistory();
+    }
+
+    function closeHistoryModal() {
+        historyModal.classList.remove("open");
+    }
+
+    document.getElementById("btnOpenEvalHistory")?.addEventListener("click", openHistoryModal);
+    document.getElementById("btnHeaderEvalHistory")?.addEventListener("click", openHistoryModal);
+    document.getElementById("btnCloseEvalHistory")?.addEventListener("click", closeHistoryModal);
+    historyModal.addEventListener("click", (e) => {
+        if (e.target === historyModal) closeHistoryModal();
+    });
+
+    document.getElementById("btnRefreshHistory")?.addEventListener("click", loadAndRenderHistory);
+    document.getElementById("selHistoryPresetFilter")?.addEventListener("change", loadAndRenderHistory);
+
+    async function loadAndRenderHistory() {
+        const filterPreset = document.getElementById("selHistoryPresetFilter")?.value || "";
+
+        try {
+            // 1. Fetch summary
+            const resSum = await fetch("/api/feedback/summary");
+            const dataSum = await resSum.json();
+            const summary = dataSum.summary || {};
+
+            document.getElementById("summaryTotalCount").textContent = summary.total_evaluations || 0;
+            document.getElementById("summaryAvgParity").textContent = `${summary.average_elevenlabs_parity || 0.0} / 10`;
+            document.getElementById("summaryAvgSmoothness").textContent = `${summary.averages?.smoothness || 0.0} / 10`;
+            document.getElementById("summaryAvgRealism").textContent = `${summary.averages?.realism || 0.0} / 10`;
+
+            // Populate preset filter dropdown
+            const filterSelect = document.getElementById("selHistoryPresetFilter");
+            if (filterSelect && filterSelect.options.length <= 1) {
+                Object.keys(summary.preset_counts || {}).forEach(name => {
+                    const opt = document.createElement("option");
+                    opt.value = name;
+                    opt.textContent = `${name} (${summary.preset_counts[name]})`;
+                    filterSelect.appendChild(opt);
+                });
+            }
+
+            // 2. Fetch records
+            const url = filterPreset ? `/api/feedback?preset_id=${encodeURIComponent(filterPreset)}` : "/api/feedback";
+            const resList = await fetch(url);
+            const dataList = await resList.json();
+            const records = dataList.evaluations || [];
+
+            const tbody = document.getElementById("evalHistoryTableBody");
+            tbody.innerHTML = "";
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-dim); padding: 18px;">No evaluations recorded yet.</td></tr>`;
+                return;
+            }
+
+            records.forEach(r => {
+                const tr = document.createElement("tr");
+
+                const dateStr = new Date(r.timestamp).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                const sc = r.scores || {};
+
+                const getBadgeClass = (score) => {
+                    if (score >= 8) return "score-high";
+                    if (score >= 5) return "score-mid";
+                    return "score-low";
+                };
+
+                const tagsHtml = (r.tags || []).map(t => `<span class="badge" style="font-size: 0.65rem; margin-right: 4px;">${t}</span>`).join("");
+                const notesHtml = r.notes ? `<div style="font-style: italic; color: var(--text-main); margin-top: 4px;">"${r.notes}"</div>` : "";
+
+                tr.innerHTML = `
+                    <td style="white-space: nowrap; color: var(--text-dim);">${dateStr}</td>
+                    <td><strong>${r.preset_name || "Custom"}</strong><br><span style="font-size: 0.65rem; color: var(--text-dim);">${r.language || ""}</span></td>
+                    <td><span class="badge">${(r.engine_mode || "neural").toUpperCase()}</span></td>
+                    <td><span class="score-badge ${getBadgeClass(sc.elevenlabs_parity)}">${sc.elevenlabs_parity || "-"}/10</span></td>
+                    <td><span class="score-badge ${getBadgeClass(sc.smoothness)}">${sc.smoothness || "-"}/10</span></td>
+                    <td><span class="score-badge ${getBadgeClass(sc.realism)}">${sc.realism || "-"}/10</span></td>
+                    <td><span class="score-badge ${getBadgeClass(sc.pronunciation)}">${sc.pronunciation || "-"}/10</span></td>
+                    <td>${tagsHtml}${notesHtml}</td>
+                    <td>
+                        <button type="button" class="btn-delete-eval" data-id="${r.id}" title="Delete Evaluation">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+
+                tr.querySelector(".btn-delete-eval")?.addEventListener("click", async () => {
+                    if (confirm("Delete this evaluation record?")) {
+                        await fetch(`/api/feedback/${r.id}`, { method: "DELETE" });
+                        await loadAndRenderHistory();
+                        await updateEvaluationCounters();
+                    }
+                });
+
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Error loading evaluation history:", e);
+        }
+    }
+
     // Initial load
+    initRatingPills();
     await loadSymbols();
     await loadPresets();
+    await updateEvaluationCounters();
+
+    // Hook preset changes to evaluation context
+    document.getElementById("presetSelect")?.addEventListener("change", (e) => {
+        const p = presets.find(item => item.id === e.target.value);
+        const mode = document.getElementById("selectEngineMode")?.value || "neural";
+        if (p) updateEvalContext(p, mode, p.json_data);
+    });
+
+    // Hook engine mode changes to evaluation context
+    document.getElementById("selectEngineMode")?.addEventListener("change", (e) => {
+        const presetId = document.getElementById("presetSelect")?.value;
+        const p = presets.find(item => item.id === presetId);
+        updateEvalContext(p, e.target.value, currentScript);
+    });
 });
+

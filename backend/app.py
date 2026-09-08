@@ -22,6 +22,11 @@ from .engine import (
     synthesize_neural_script_async,
     audio_to_wav_bytes,
     get_all_symbols_metadata,
+    EvaluationSubmission,
+    save_evaluation,
+    load_evaluations,
+    delete_evaluation,
+    get_evaluation_summary,
 )
 
 
@@ -149,6 +154,48 @@ async def synthesize_wav_direct(req: SynthesizeRequest):
         return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# Feedback & Evaluation Endpoints
+@app.post("/api/feedback")
+async def submit_feedback_endpoint(sub: EvaluationSubmission):
+    """Submits a 1-10 quality evaluation record with diagnostic tags and qualitative notes."""
+    try:
+        record = save_evaluation(sub)
+        return {"status": "success", "record": record.model_dump()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/feedback")
+async def get_feedback_endpoint(preset_id: Optional[str] = None):
+    """Retrieves all feedback records, optionally filtered by preset ID."""
+    try:
+        records = load_evaluations()
+        if preset_id:
+            records = [r for r in records if r.get("preset_id") == preset_id]
+        return {"status": "success", "count": len(records), "evaluations": records}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/feedback/{eval_id}")
+async def delete_feedback_endpoint(eval_id: str):
+    """Deletes an evaluation record by ID."""
+    deleted = delete_evaluation(eval_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Evaluation record not found")
+    return {"status": "success", "message": "Record deleted"}
+
+
+@app.get("/api/feedback/summary")
+async def get_feedback_summary_endpoint():
+    """Returns aggregate 1-10 quality metrics and issue frequencies."""
+    try:
+        summary = get_evaluation_summary()
+        return {"status": "success", "summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Mount frontend static files
