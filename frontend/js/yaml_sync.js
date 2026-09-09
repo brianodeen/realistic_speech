@@ -54,16 +54,18 @@ class YamlSync {
         this.isInternalUpdate = true;
         try {
             if (this.format === "extipa") {
-                if (scriptObj.script) {
-                    this.textarea.value = typeof scriptObj.script === "string" ? scriptObj.script : scriptObj.script.join(" ");
-                } else if (scriptObj.utterance && scriptObj.utterance.length > 0) {
+                if (scriptObj.utterance && scriptObj.utterance.length > 0) {
                     const parts = scriptObj.utterance.map(u => {
-                        if (u.phrase) return u.phrase;
-                        if (u.break || u.break_type) return "ʔ";
+                        if (u.isBreak || u.label === "ʔ" || u.prosody?.phonation === "glottal_stop" || u.break || u.break_type) {
+                            return "ʔ";
+                        }
                         if (u.label) return u.label;
+                        if (u.phrase) return u.phrase;
                         return "";
                     }).filter(Boolean);
                     this.textarea.value = parts.join(" ");
+                } else if (scriptObj.script) {
+                    this.textarea.value = typeof scriptObj.script === "string" ? scriptObj.script : scriptObj.script.join(" ");
                 } else {
                     this.textarea.value = "wiː‿sɔː juː‿ɡoʊ";
                 }

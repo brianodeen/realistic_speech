@@ -336,6 +336,21 @@ class TimelineSequencer {
         this.triggerChange();
     }
 
+    addGlottalBreak() {
+        const newBreak = {
+            id: `break_${this.utterance.length + 1}`,
+            label: "ʔ",
+            isBreak: true,
+            duration_ms: 45,
+            prosody: { chao_tone: null, phonation: "glottal_stop" },
+            phonemes: [{ symbol: "ʔ", type: "consonant", name: "Glottal Stop [ʔ]", duration_ms: 45 }]
+        };
+        this.utterance.push(newBreak);
+        this.activeSyllableIndex = this.utterance.length - 1;
+        this.render();
+        this.triggerChange();
+    }
+
     deleteSyllable(idx, e) {
         if (e) e.stopPropagation();
         if (this.utterance.length <= 1) return;
@@ -439,11 +454,17 @@ class TimelineSequencer {
                 labelInput.className = "syl-label-input";
                 labelInput.value = syl.label || `syl_${sIdx + 1}`;
                 labelInput.title = "ExtIPA Syllable/Word (Editable)";
-                labelInput.addEventListener("change", (e) => {
-                    syl.label = e.target.value;
-                    syl.phonemes = this.extractPhonemesFromToken(e.target.value);
+
+                const onLabelUpdate = (val) => {
+                    syl.label = val;
+                    syl.phonemes = this.extractPhonemesFromToken(val);
                     syl.duration_ms = syl.phonemes.reduce((sum, p) => sum + (p.duration_ms || 100), 0);
                     this.triggerChange();
+                };
+
+                labelInput.addEventListener("input", (e) => onLabelUpdate(e.target.value));
+                labelInput.addEventListener("change", (e) => {
+                    onLabelUpdate(e.target.value);
                     this.render();
                 });
                 leftWrap.appendChild(numPill);

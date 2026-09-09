@@ -1,5 +1,31 @@
 [
   {
+    "id": "bb6a0631-39c3-4aa0-8194-b74171a57393",
+    "timestamp": "2026-09-09T20:49:34.898546+00:00",
+    "preset_id": "alien_click_tonal",
+    "preset_name": "Xylos (Tonal Click Conlang)",
+    "language": "Xylos (Tonal Click Conlang)",
+    "engine_mode": "neural",
+    "script_text": "[{\"phrase\":\"kǀiː‿ʃuː\",\"tone\":\"51 35\",\"phonation\":\"modal\"},{\"break\":\"glottal_stop\"},{\"phrase\":\"kǃaː‿kǁuː\",\"tone\":\"214 55\",\"phonation\":\"modal\"}]",
+    "scores": {
+      "smoothness": 8,
+      "realism": 3,
+      "pronunciation": 9,
+      "prosody": 6,
+      "bioacoustics": null,
+      "cleanliness": 9,
+      "elevenlabs_parity": 6
+    },
+    "tags": [],
+    "notes": "A bit robotic.",
+    "speaker_params": {
+      "name": "Kalo the Storyteller",
+      "voice_type": "natural_male",
+      "base_pitch_hz": 145,
+      "speed_rate": 0.95
+    }
+  },
+  {
     "id": "d9267af4-e280-46aa-882d-a6a40d7626c3",
     "timestamp": "2026-09-08T18:46:42.333464+00:00",
     "preset_id": "alien_click_tonal",

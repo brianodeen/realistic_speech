@@ -181,34 +181,27 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
     # 1. Normalize Input to ExtIPAPhrase list
     extipa_phrases: List[ExtIPAPhrase] = []
 
-    # Case A: Concise ExtIPA script string provided (e.g. "wiː‿sɔː juː‿ɡoʊ")
-    if script.script:
-        if isinstance(script.script, list):
-            full_script_str = " ".join(script.script)
-        else:
-            full_script_str = str(script.script)
-        extipa_phrases = parse_extipa_string(full_script_str)
-
-    # Case B: Utterance list provided
-    elif script.utterance:
+    # Case A: Utterance list provided with modified syllables
+    if script.utterance and len(script.utterance) > 0:
         for u in script.utterance:
             # Utterance is an ExtIPAPhraseItem or dict with 'phrase' / 'break'
-            if isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u)):
+            if isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u or "isBreak" in u or u.get("label") == "ʔ")):
                 u_dict = u if isinstance(u, dict) else u.model_dump(by_alias=True)
-                brk = u_dict.get("break") or u_dict.get("break_type")
+                brk = u_dict.get("break") or u_dict.get("break_type") or u_dict.get("isBreak") or (u_dict.get("label") == "ʔ")
                 if brk:
-                    dur = 40.0 if "glottal" in brk else 75.0
+                    dur = 40.0 if (isinstance(brk, str) and "glottal" in brk) else float(u_dict.get("duration_ms") or 45.0)
                     extipa_phrases.append(ExtIPAPhrase(
-                        raw_text=brk,
+                        raw_text="ʔ",
                         phonetic_text="",
                         is_break=True,
                         break_duration_ms=dur,
                         phonation="glottal_stop"
                     ))
-                elif u_dict.get("phrase"):
-                    p_tone = u_dict.get("tone")
-                    p_phon = u_dict.get("phonation", "modal")
-                    sub_parsed = parse_extipa_string(u_dict["phrase"], default_tone=p_tone, default_phonation=p_phon)
+                elif u_dict.get("phrase") or u_dict.get("label"):
+                    p_text = u_dict.get("phrase") or u_dict.get("label")
+                    p_tone = u_dict.get("tone") or (u_dict.get("prosody", {}).get("chao_tone") if isinstance(u_dict.get("prosody"), dict) else None)
+                    p_phon = u_dict.get("phonation") or (u_dict.get("prosody", {}).get("phonation") if isinstance(u_dict.get("prosody"), dict) else "modal") or "modal"
+                    sub_parsed = parse_extipa_string(p_text, default_tone=p_tone, default_phonation=p_phon)
                     extipa_phrases.extend(sub_parsed)
 
             # Utterance is a classic Syllable object
@@ -219,6 +212,14 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
                 s_phon = syl_obj.prosody.phonation
                 sub_parsed = parse_extipa_string(label, default_tone=s_tone, default_phonation=s_phon)
                 extipa_phrases.extend(sub_parsed)
+
+    # Case B: Concise ExtIPA script string provided (e.g. "wiː‿sɔː juː‿ɡoʊ")
+    elif script.script:
+        if isinstance(script.script, list):
+            full_script_str = " ".join(script.script)
+        else:
+            full_script_str = str(script.script)
+        extipa_phrases = parse_extipa_string(full_script_str)
 
     if not extipa_phrases:
         return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "phrases": []}

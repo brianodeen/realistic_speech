@@ -53,6 +53,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Timeline state change callback
     const onTimelineChanged = (utterance) => {
         currentScript.utterance = utterance;
+        const scriptParts = utterance.map(u => {
+            if (u.isBreak || u.label === "ʔ" || u.prosody?.phonation === "glottal_stop" || u.break) {
+                return "ʔ";
+            }
+            return u.label || "";
+        }).filter(Boolean);
+        currentScript.script = scriptParts.join(" ");
         yamlSync.updateFromState(currentScript);
     };
 
@@ -195,6 +202,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 7. Bind Timeline Actions
     document.getElementById("btnAddSyllable").addEventListener("click", () => {
         timeline.addSyllable();
+    });
+
+    document.getElementById("btnAddBreak")?.addEventListener("click", () => {
+        timeline.addGlottalBreak();
     });
 
     document.getElementById("btnClearUtterance").addEventListener("click", () => {
@@ -370,6 +381,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Synthesizing...`;
 
         try {
+            // Ensure currentScript is strictly synchronized with the timeline sequencer
+            if (timeline && timeline.utterance && timeline.utterance.length > 0) {
+                currentScript.utterance = timeline.utterance;
+                const scriptParts = timeline.utterance.map(u => {
+                    if (u.isBreak || u.label === "ʔ" || u.prosody?.phonation === "glottal_stop" || u.break) {
+                        return "ʔ";
+                    }
+                    return u.label || "";
+                }).filter(Boolean);
+                currentScript.script = scriptParts.join(" ");
+            }
+
             const res = await fetch("/api/synthesize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

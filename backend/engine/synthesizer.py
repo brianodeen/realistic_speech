@@ -37,26 +37,28 @@ def synthesize_script(script: ConlangScript, sample_rate: int = SAMPLE_RATE) -> 
     Main entry point: Synthesizes a complete ConlangScript using continuous
     cursive coarticulation, time-varying formant trajectories, and bioacoustic modulation.
     """
-    # If concise ExtIPA script string is provided, parse it
+    # Prioritize explicit utterance syllables from sequencer
     syllable_list = []
-    if script.script:
-        raw_str = " ".join(script.script) if isinstance(script.script, list) else str(script.script)
-        phrases = parse_extipa_string(raw_str)
-        syllable_list = extipa_to_syllables(phrases)
-    elif script.utterance:
-        # Check if utterance items are Syllable objects or ExtIPAPhraseItems
+    if script.utterance and len(script.utterance) > 0:
         for u in script.utterance:
             if isinstance(u, Syllable):
                 syllable_list.append(u)
-            elif isinstance(u, dict) and "phonemes" in u:
+            elif isinstance(u, dict) and "phonemes" in u and not u.get("isBreak") and u.get("label") != "ʔ":
                 syllable_list.append(Syllable(**u))
-            elif isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u)):
+            elif isinstance(u, ExtIPAPhraseItem) or (isinstance(u, dict) and ("phrase" in u or "break" in u or "isBreak" in u or u.get("label") == "ʔ")):
                 u_dict = u if isinstance(u, dict) else u.model_dump(by_alias=True)
-                if u_dict.get("break") or u_dict.get("break_type"):
-                    p = parse_extipa_string(u_dict.get("break") or "ʔ")
+                if u_dict.get("break") or u_dict.get("break_type") or u_dict.get("isBreak") or u_dict.get("label") == "ʔ":
+                    p = parse_extipa_string("ʔ")
                 else:
-                    p = parse_extipa_string(u_dict.get("phrase", ""), default_tone=u_dict.get("tone"), default_phonation=u_dict.get("phonation", "modal"))
+                    label_or_phrase = u_dict.get("phrase") or u_dict.get("label", "")
+                    tone = u_dict.get("tone") or (u_dict.get("prosody", {}).get("chao_tone") if isinstance(u_dict.get("prosody"), dict) else None)
+                    phon = u_dict.get("phonation") or (u_dict.get("prosody", {}).get("phonation") if isinstance(u_dict.get("prosody"), dict) else "modal")
+                    p = parse_extipa_string(label_or_phrase, default_tone=tone, default_phonation=phon)
                 syllable_list.extend(extipa_to_syllables(p))
+    elif script.script:
+        raw_str = " ".join(script.script) if isinstance(script.script, list) else str(script.script)
+        phrases = parse_extipa_string(raw_str)
+        syllable_list = extipa_to_syllables(phrases)
 
     if not syllable_list:
         return np.zeros(int(0.2 * sample_rate), dtype=np.float32), {"duration_sec": 0.2, "syllables": []}
