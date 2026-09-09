@@ -3,27 +3,33 @@
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Core State
-    let currentScript = {
-        version: "1.0",
-        language: "Zha-Kari (Feline Predator Conlang)",
-        description: "Predatory feline conlang",
-        speaker: {
-            name: "Vakkar Shadow-Stalker",
-            base_pitch_hz: 135,
-            pitch_range_semitones: 14,
-            vocal_tract_scale: 0.88,
-            breathiness: 0.08,
-            vocal_fry: 0.15,
-            growl_roughness: 0.40,
-            purr_depth: 0.0,
-            default_volume_db: 0.0
-        },
-        utterance: []
-    };
+    // 1. Core State with instant offline built-in presets
+    let presets = (window.BUILTIN_PRESETS && window.BUILTIN_PRESETS.length > 0)
+        ? JSON.parse(JSON.stringify(window.BUILTIN_PRESETS))
+        : [];
+
+    let currentScript = presets.length > 0
+        ? JSON.parse(JSON.stringify(presets[0].json_data))
+        : {
+            version: "2.0",
+            language: "Xylos (Tonal Click Conlang)",
+            description: "African velaric suction clicks, cursive glides, and glottal breaks.",
+            speaker: {
+                name: "Kalo the Storyteller",
+                voice_type: "natural_male",
+                base_pitch_hz: 145,
+                pitch_range_semitones: 12,
+                vocal_tract_scale: 1.0,
+                breathiness: 0.05,
+                vocal_fry: 0.0,
+                growl_roughness: 0.0,
+                purr_depth: 0.0,
+                default_volume_db: 0.0
+            },
+            script: "kǀiː‿ʃuː ʔ kǃaː‿kǁuː"
+        };
 
     let allSymbols = [];
-    let presets = [];
 
     // 2. Initialize Subcomponents
     const audioSynth = new WebAudioSynth();
@@ -75,6 +81,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // External YAML/JSON edit callback
     const onScriptParsedFromEditor = (parsedScript) => {
+        if (currentScript && currentScript.speaker && (!parsedScript.speaker || parsedScript.speaker.name === "Speaker")) {
+            parsedScript.speaker = { ...currentScript.speaker };
+        }
         currentScript = parsedScript;
         syncUIToState();
     };
@@ -308,32 +317,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function loadPresets() {
         try {
             const res = await fetch("/api/presets");
+            if (!res.ok) return;
             const data = await res.json();
-            presets = data.presets || [];
-
-            const select = document.getElementById("presetSelect");
-            select.innerHTML = "";
-
-            presets.forEach(p => {
-                const opt = document.createElement("option");
-                opt.value = p.id;
-                opt.textContent = p.name;
-                select.appendChild(opt);
-            });
-
-            if (presets.length > 0) {
-                select.value = presets[0].id;
-                currentScript = presets[0].json_data;
-                syncUIToState();
-                const mode = document.getElementById("selectEngineMode")?.value || "neural";
-                updateEvalContext(presets[0], mode, currentScript);
+            if (data.presets && data.presets.length > 0) {
+                presets = data.presets;
+                renderPresetOptions();
             }
         } catch (e) {
-            console.error("Failed to load presets:", e);
+            console.warn("Using built-in presets cache:", e);
+        }
+    }
+
+    function renderPresetOptions() {
+        const select = document.getElementById("presetSelect");
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = "";
+
+        presets.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.name;
+            select.appendChild(opt);
+        });
+
+        if (currentVal && presets.some(p => p.id === currentVal)) {
+            select.value = currentVal;
+        } else if (presets.length > 0) {
+            select.value = presets[0].id;
         }
     }
 
     document.getElementById("presetSelect").addEventListener("change", (e) => {
+        // 1. Sync current preset feedback before switching
+        syncCurrentPresetFeedbackToStore();
+
         const presetId = e.target.value;
         const p = presets.find(item => item.id === presetId);
         if (p) {
@@ -463,13 +481,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     function getCleanPresetScores() {
         return {
-            smoothness: 8,
-            realism: 8,
-            pronunciation: 9,
-            prosody: 8,
-            bioacoustics: null, // null for N/A
-            cleanliness: 9,
-            elevenlabs_parity: 8,
+            smoothness: null,
+            realism: null,
+            pronunciation: null,
+            prosody: null,
+            bioacoustics: null,
+            cleanliness: null,
+            elevenlabs_parity: null,
         };
     }
 
@@ -477,9 +495,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         scores: getCleanPresetScores(),
         tags: new Set(),
         lastSynthesisInfo: {
-            preset_id: "custom",
-            preset_name: "Custom Script",
-            language: "Conlang",
+            preset_id: "alien_click_tonal",
+            preset_name: "Xylos (Tonal Click Conlang)",
+            language: "Xylos (Tonal Click Conlang)",
             engine_mode: "neural",
             script_text: "",
         },
@@ -504,7 +522,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             { id: "realism", badgeId: "valRealism" },
             { id: "pronunciation", badgeId: "valPronunciation" },
             { id: "prosody", badgeId: "valProsody" },
-            { id: "bioacoustics", badgeId: "valBioacoustics" },
+            { id: "bioacoustics", badgeId: "valBioacoustics", hasNA: true },
             { id: "cleanliness", badgeId: "valCleanliness" },
             { id: "elevenlabs_parity", badgeId: "valParity" },
         ];
@@ -515,15 +533,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             const val = scores[m.id];
 
             container.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+            const badge = document.getElementById(m.badgeId);
+
             if (val === null || val === undefined) {
+                if (badge) badge.textContent = "-";
+            } else if (val === "NA") {
                 const naBtn = container.querySelector(".pill-na");
                 if (naBtn) naBtn.classList.add("active");
-                const badge = document.getElementById(m.badgeId);
                 if (badge) badge.textContent = "N/A";
             } else {
                 const btn = container.querySelector(`.pill-btn[data-score="${val}"]`);
                 if (btn) btn.classList.add("active");
-                const badge = document.getElementById(m.badgeId);
                 if (badge) badge.textContent = `${val}/10`;
             }
         });
@@ -557,7 +577,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             const notesEl = document.getElementById("evalNotesTextarea");
             if (notesEl) notesEl.value = "";
             setEvalBadge(`${presetName || presetId} [Not Yet Rated]`);
-            syncCurrentPresetFeedbackToStore();
         }
     }
 
@@ -586,13 +605,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize 1-10 Pill Rating Groups
     function initRatingPills() {
         const metrics = [
-            { id: "smoothness", defaultVal: 8, hasNA: false, badgeId: "valSmoothness" },
-            { id: "realism", defaultVal: 8, hasNA: false, badgeId: "valRealism" },
-            { id: "pronunciation", defaultVal: 9, hasNA: false, badgeId: "valPronunciation" },
-            { id: "prosody", defaultVal: 8, hasNA: false, badgeId: "valProsody" },
-            { id: "bioacoustics", defaultVal: null, hasNA: true, badgeId: "valBioacoustics" },
-            { id: "cleanliness", defaultVal: 9, hasNA: false, badgeId: "valCleanliness" },
-            { id: "elevenlabs_parity", defaultVal: 8, hasNA: false, badgeId: "valParity" },
+            { id: "smoothness", hasNA: false, badgeId: "valSmoothness" },
+            { id: "realism", hasNA: false, badgeId: "valRealism" },
+            { id: "pronunciation", hasNA: false, badgeId: "valPronunciation" },
+            { id: "prosody", hasNA: false, badgeId: "valProsody" },
+            { id: "bioacoustics", hasNA: true, badgeId: "valBioacoustics" },
+            { id: "cleanliness", hasNA: false, badgeId: "valCleanliness" },
+            { id: "elevenlabs_parity", hasNA: false, badgeId: "valParity" },
         ];
 
         metrics.forEach(m => {
@@ -603,11 +622,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (m.hasNA) {
                 const naBtn = document.createElement("button");
                 naBtn.type = "button";
-                naBtn.className = `pill-btn pill-na ${m.defaultVal === null ? "active" : ""}`;
+                naBtn.className = "pill-btn pill-na";
                 naBtn.textContent = "N/A";
                 naBtn.title = "Not applicable for human-only scripts";
                 naBtn.addEventListener("click", () => {
-                    evalState.scores[m.id] = null;
+                    evalState.scores[m.id] = "NA";
                     container.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
                     naBtn.classList.add("active");
                     const badge = document.getElementById(m.badgeId);
@@ -620,7 +639,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             for (let i = 1; i <= 10; i++) {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = `pill-btn ${m.defaultVal === i ? "active" : ""}`;
+                btn.className = "pill-btn";
                 btn.setAttribute("data-score", i);
                 btn.textContent = i;
                 btn.title = `Score: ${i}/10`;
@@ -637,7 +656,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const badge = document.getElementById(m.badgeId);
             if (badge) {
-                badge.textContent = m.defaultVal === null ? "N/A" : `${m.defaultVal}/10`;
+                badge.textContent = "-";
             }
         });
     }
@@ -876,12 +895,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // Initial load
+    // Immediate synchronous UI initialization (renders syllables & words on frame 1)
+    renderPresetOptions();
     initRatingPills();
-    await populateFeedbackStoreFromBackend();
-    await loadSymbols();
-    await loadPresets();
-    await updateEvaluationCounters();
+    syncUIToState();
+    if (presets.length > 0) {
+        updateEvalContext(presets[0], "neural", currentScript);
+    }
+
+    // Background asynchronous data fetching
+    try {
+        await populateFeedbackStoreFromBackend();
+    } catch (e) { console.warn(e); }
+    try {
+        await loadSymbols();
+    } catch (e) { console.warn(e); }
+    try {
+        await loadPresets();
+    } catch (e) { console.warn(e); }
+    try {
+        await updateEvaluationCounters();
+    } catch (e) { console.warn(e); }
 
     // Hook engine mode changes to evaluation context
     document.getElementById("selectEngineMode")?.addEventListener("change", (e) => {
