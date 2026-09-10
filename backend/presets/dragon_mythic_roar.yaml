@@ -6,6 +6,7 @@ speaker:
   name: "Ignis Colossus"
   voice_type: "baritone"
   base_pitch_hz: 65.0
+  growl_roughness: 0.85
 
 utterance:
   - phrase: "Krrgh"

@@ -122,48 +122,63 @@ def apply_bioacoustic_phonation_modifier(
     audio: np.ndarray,
     phonation: str,
     base_f0: float,
-    sample_rate: int = SAMPLE_RATE
+    sample_rate: int = SAMPLE_RATE,
+    growl_roughness: float = 0.0,
 ) -> np.ndarray:
     """
     Applies physical ExtIPA phonation modulations (ventricular growl, purr gating,
-    velopharyngeal snarl, creak, or breathy whisper) directly to the neural audio stream.
+    velopharyngeal snarl, creak, breathy whisper, or canine animalistic roughness)
+    directly to the neural audio stream.
     """
-    if len(audio) == 0 or phonation in ["modal", "", None]:
+    if len(audio) == 0:
         return audio
 
     n = len(audio)
     t = np.arange(n) / float(sample_rate)
-    ph = phonation.lower().strip()
+    ph = (phonation or "modal").lower().strip()
 
     # 1. Ventricular False-Fold Growl / Throat Singing (ʭ)
     if "growl" in ph or "ventricular" in ph or ph == "ʭ":
-        sub_f0 = max(40.0, base_f0 * 0.5)
+        sub_f0 = max(35.0, base_f0 * 0.5)
+        # Deep subharmonic false-cord modulation
         sub_mod = 0.5 * (1.0 + np.sin(2.0 * np.pi * sub_f0 * t))
-        noise = np.random.randn(n) * 0.15
-        return (audio * (0.65 + 0.35 * sub_mod) + noise * np.abs(audio)).astype(np.float32)
+        # Add acoustic pharyngeal mucosal grit
+        grit = np.random.randn(n) * 0.18
+        b_grit, a_grit = signal.butter(2, [min(200.0 / (sample_rate / 2.0), 0.85), min(1800.0 / (sample_rate / 2.0), 0.95)], btype="band")
+        filtered_grit = signal.lfilter(b_grit, a_grit, grit)
+        audio = (audio * (0.60 + 0.40 * sub_mod) + filtered_grit * np.abs(audio)).astype(np.float32)
 
     # 2. Feline Laryngeal Neural Purr Gating (ʬ̃ / ʙ)
     elif "purr" in ph or ph == "ʬ̃" or ph == "ʙ":
         purr_rate = 24.5  # Hz
         twitch = 0.5 * (1.0 - np.cos(2.0 * np.pi * purr_rate * t)) ** 2
-        return (audio * (0.35 + 0.65 * twitch)).astype(np.float32)
+        audio = (audio * (0.35 + 0.65 * twitch)).astype(np.float32)
 
-    # 3. Velopharyngeal Snarl / Mucosal Friction (f͌ / v͌)
+    # 3. Velopharyngeal Snarl / Canine Mucosal Friction (f͌ / v͌)
     elif "snarl" in ph or ph in ["f͌", "v͌"]:
         snarl_rate = 48.0 # Hz
         flutter = 0.5 * (1.0 + np.sin(2.0 * np.pi * snarl_rate * t))
-        noise = np.random.randn(n) * 0.20
-        return (audio * (0.55 + 0.45 * flutter) + noise * np.abs(audio)).astype(np.float32)
+        noise = np.random.randn(n) * 0.22
+        b_snarl, a_snarl = signal.butter(2, [min(800.0 / (sample_rate / 2.0), 0.85), min(3400.0 / (sample_rate / 2.0), 0.95)], btype="band")
+        filtered_snarl = signal.lfilter(b_snarl, a_snarl, noise)
+        audio = (audio * (0.50 + 0.50 * flutter) + filtered_snarl * np.abs(audio)).astype(np.float32)
 
     # 4. Breathy Whisper
     elif "breathy" in ph or "whisper" in ph:
         noise = np.random.randn(n) * 0.25
-        return (audio * 0.60 + noise * np.abs(audio)).astype(np.float32)
+        audio = (audio * 0.60 + noise * np.abs(audio)).astype(np.float32)
 
     # 5. Vocal Fry / Creaky Voice
     elif "creaky" in ph or "fry" in ph:
         fry_pulses = (np.sin(2.0 * np.pi * 32.0 * t) > 0.85).astype(np.float32)
-        return (audio * (0.50 + 0.50 * fry_pulses)).astype(np.float32)
+        audio = (audio * (0.50 + 0.50 * fry_pulses)).astype(np.float32)
+
+    # 6. Global Canine / Predator Animalistic Roughness Layer
+    if growl_roughness > 0.05:
+        rough_freq = max(38.0, base_f0 * 0.45)
+        rough_lfo = 0.5 * (1.0 + np.sin(2.0 * np.pi * rough_freq * t))
+        noise_grit = np.random.randn(n) * 0.12 * growl_roughness
+        audio = (audio * (1.0 - growl_roughness * 0.35 + growl_roughness * 0.35 * rough_lfo) + noise_grit * np.abs(audio)).astype(np.float32)
 
     return audio
 
@@ -244,8 +259,15 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
             if not p_text:
                 continue
 
+            # Check if phrase contains sustained chanting or howling vowels (e.g. 'awoooo', 'ooommm')
+            # Slow down synthesis speed rate so identical repeated vowels are drawn out and held longer
+            phrase_speed = speed_rate
+            raw_lower = phrase.raw_text.lower()
+            if any(v * 3 in raw_lower for v in ("o", "u", "a", "e", "i")) or "ːː" in raw_lower or "ooommm" in raw_lower:
+                phrase_speed = max(0.65, speed_rate * 0.78)
+
             # Render phrase via Neural Vocoder
-            seg_audio = await synthesize_neural_text_async(p_text, voice_id, pitch_hz_offset=0.0, speed_rate=speed_rate)
+            seg_audio = await synthesize_neural_text_async(p_text, voice_id, pitch_hz_offset=0.0, speed_rate=phrase_speed)
 
             # If phrase contains a click onset (e.g. kǀi, kǃa), overlay sharp velaric click shockwave at t=0
             if phrase.has_click and len(seg_audio) > 0:
@@ -253,9 +275,14 @@ async def synthesize_neural_script_async(script: ConlangScript, sample_rate: int
                 blend_len = min(len(click_burst), len(seg_audio))
                 seg_audio[:blend_len] = seg_audio[:blend_len] * 0.35 + click_burst[:blend_len] * 1.25
 
-            # Apply Bioacoustic ExtIPA Phonation Modifiers (Growl, Purr, Snarl, Whisper)
-            if phrase.phonation and phrase.phonation != "modal":
-                seg_audio = apply_bioacoustic_phonation_modifier(seg_audio, phrase.phonation, base_f0, sample_rate)
+            # Apply Bioacoustic ExtIPA Phonation Modifiers (Growl, Purr, Snarl, Whisper, Roughness)
+            seg_audio = apply_bioacoustic_phonation_modifier(
+                seg_audio,
+                phrase.phonation,
+                base_f0,
+                sample_rate,
+                growl_roughness=script.speaker.growl_roughness
+            )
 
             # Gentle edge smoothing (2ms) to ensure continuous cursive flow without boundary clicks
             if len(seg_audio) > 128:

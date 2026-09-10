@@ -161,43 +161,50 @@ def parse_extipa_string(ipa_str: str, default_tone: Optional[str] = None, defaul
 def convert_ipa_to_phonetic_orthography(ipa_word: str) -> str:
     """
     Converts an IPA word/cursive compound into clean, natural phonetic orthography
-    with consecutive vowel collapse (e.g. 'awoooo' -> 'Awoo').
+    with consecutive vowel collapse and natural phonetic pronunciations for neural vocoders.
+    Prevents spell-out letter pronunciation (e.g. 'trrrt' -> 'Trrt' / 'Trit', 'Krrgh' -> 'Krug').
     """
     w = ipa_word.strip()
     if not w:
         return ""
 
-    # Check for direct word matches
-    known_phrases = {
+    # Check for direct word matches (case-insensitive lookup table)
+    w_lower = w.lower()
+    known_phrases_lower = {
         "mā": "mā", "má": "má", "mǎ": "mǎ", "mà": "mà",
         "mɛˀ": "Mẹ", "əːj": "ơi", "sɨəˀ": "sữa", "kaː": "cá",
-        "Oooommm": "Ohm", "Aaaa-eeee": "Ah-ee",
-        "Oooommm‿Aaaa-eeee": "Ohm Ah-ee",
-        "Trrrt": "Trrt", "Mraow": "Meow",
+        "ooommm": "Ohm", "aaaa-eeee": "Ah-ee",
+        "ooommm‿aaaa-eeee": "Ohm Ah-ee",
+        "trrrt": "Trit", "trrt": "Trit", "trr": "Trill", "mraow": "Meow",
         "awooooːː": "Awoo", "awoooo": "Awoo", "awoo": "Awoo",
-        "roaaar": "Roar", "krrgh": "Krrgh",
+        "roaaar": "Roar", "krrgh": "Krug", "krr": "Krug",
+        "wʌf": "Wuff", "wʌf!": "Wuff!",
     }
-    if w in known_phrases:
-        return known_phrases[w]
+    if w_lower in known_phrases_lower:
+        return known_phrases_lower[w_lower]
 
-    # 1. Collapse multiple consecutive identical vowels into a single sustained vowel
-    # e.g. 'oooo' -> 'oo', 'uuuu' -> 'oo', 'aaaa' -> 'aa', 'eeee' -> 'ee', 'iiii' -> 'ee'
-    w = re.sub(r'o{2,}', 'oo', w, flags=re.IGNORECASE)
-    w = re.sub(r'u{2,}', 'oo', w, flags=re.IGNORECASE)
-    w = re.sub(r'a{2,}', 'aa', w, flags=re.IGNORECASE)
-    w = re.sub(r'e{2,}', 'ee', w, flags=re.IGNORECASE)
-    w = re.sub(r'i{2,}', 'ee', w, flags=re.IGNORECASE)
-
-    # Clean secondary articulation marks and length marks that don't change core spelling
+    # 1. Clean secondary articulation marks and length marks that don't change core spelling
     w = w.replace("ˠ", "").replace("ˀ", "")
 
-    # If word contains cursive tie '‿', split into sub-elements and join with hyphen for fluid liaison
+    # 2. If word contains cursive tie '‿', split into sub-elements and join with hyphen for fluid liaison
     if "‿" in w:
         sub_parts = [convert_ipa_to_phonetic_orthography(p) for p in w.split("‿") if p]
         return "-".join(sub_parts)
 
     # Clean ligature tie
     w = w.replace("͡", "")
+
+    # 3. Collapse multiple consecutive identical vowels into sustained phonetic digraphs
+    # e.g. 'oooo' -> 'oo', 'uuuu' -> 'oo', 'aaaa' -> 'ah', 'eeee' -> 'ee', 'iiii' -> 'ee'
+    w = re.sub(r'o{2,}', 'oo', w, flags=re.IGNORECASE)
+    w = re.sub(r'u{2,}', 'oo', w, flags=re.IGNORECASE)
+    w = re.sub(r'a{2,}', 'ah', w, flags=re.IGNORECASE)
+    w = re.sub(r'e{2,}', 'ee', w, flags=re.IGNORECASE)
+    w = re.sub(r'i{2,}', 'ee', w, flags=re.IGNORECASE)
+
+    # 4. Collapse consecutive consonants that trigger Edge-TTS acronym/initialism spell-out
+    # e.g., 'rrr' -> 'r', 'rrrgh' -> 'rug'
+    w = re.sub(r'r{2,}', 'r', w, flags=re.IGNORECASE)
 
     # Token-by-token longest match parsing
     res = []
@@ -218,16 +225,26 @@ def convert_ipa_to_phonetic_orthography(ipa_word: str) -> str:
             ch = w[i]
             if ch == "ː":
                 pass
-            elif ch.isalnum() or ch in [" ", "-", "'"]:
+            elif ch.isalnum() or ch in [" ", "-", "'", "!"]:
                 res.append(ch)
             i += 1
 
     out = "".join(res).strip()
 
-    # Clean redundant triple vowels
+    # Clean redundant triple vowels or triple consonants
     out = re.sub(r'e{3,}', 'ee', out)
     out = re.sub(r'o{3,}', 'oo', out)
-    out = re.sub(r'a{3,}', 'aa', out)
+    out = re.sub(r'a{3,}', 'ah', out)
+    out = re.sub(r'r{2,}', 'r', out)
+
+    # Ensure unpronounceable consonant clusters have a short epenthetic vowel so TTS vocalizes naturally
+    out_lower = out.lower()
+    if out_lower in ("trrt", "trrrt", "trt"):
+        out = "Trit"
+    elif out_lower in ("krrgh", "krgh", "krh"):
+        out = "Krug"
+    elif out_lower in ("roaaar", "roaar"):
+        out = "Roar"
 
     return out.capitalize() if out else "Ah"
 

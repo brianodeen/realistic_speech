@@ -6,6 +6,7 @@ speaker:
   name: "Garrow Alpha"
   voice_type: "baritone"
   base_pitch_hz: 135.0
+  growl_roughness: 0.65
 
 utterance:
   - phrase: "wʌf"

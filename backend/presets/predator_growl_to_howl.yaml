@@ -6,6 +6,7 @@ speaker:
   name: "Apex Beast"
   voice_type: "baritone"
   base_pitch_hz: 110.0
+  growl_roughness: 0.75
 
 utterance:
   - phrase: "k͡rˠaː"

@@ -6,5 +6,6 @@ speaker:
   name: "Timber Wolf Alpha"
   voice_type: "baritone"
   base_pitch_hz: 125.0
+  growl_roughness: 0.70
 
 script: "ɡˠarː‿wʌf! ʔawooooːː"

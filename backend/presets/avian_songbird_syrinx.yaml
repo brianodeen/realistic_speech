@@ -5,6 +5,9 @@ description: "High-register whistled tones and rapid melodic glides."
 speaker:
   name: "Songbird"
   voice_type: "soprano"
-  base_pitch_hz: 240.0
+  base_pitch_hz: 205.0
+  speed_rate: 1.05
+  acoustic_warmth: 0.50
+  fleshiness: 0.75
 
 script: "t͡siː‿wiː t͡siː‿wiː"

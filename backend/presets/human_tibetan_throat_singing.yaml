@@ -6,6 +6,7 @@ speaker:
   name: "Lama Tenzin"
   voice_type: "baritone"
   base_pitch_hz: 68.0
+  growl_roughness: 0.70
 
 utterance:
   - phrase: "Oooommm"

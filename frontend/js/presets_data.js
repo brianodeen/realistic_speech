@@ -43,7 +43,10 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Songbird",
         "voice_type": "soprano",
-        "base_pitch_hz": 240.0
+        "base_pitch_hz": 205.0,
+        "speed_rate": 1.05,
+        "acoustic_warmth": 0.50,
+        "fleshiness": 0.75
       },
       "script": "t͡siː‿wiː t͡siː‿wiː"
     }
@@ -58,7 +61,8 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Garrow Alpha",
         "voice_type": "baritone",
-        "base_pitch_hz": 135.0
+        "base_pitch_hz": 135.0,
+        "growl_roughness": 0.65
       },
       "utterance": [
         {
@@ -85,7 +89,8 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Timber Wolf Alpha",
         "voice_type": "baritone",
-        "base_pitch_hz": 125.0
+        "base_pitch_hz": 125.0,
+        "growl_roughness": 0.70
       },
       "script": "ɡˠarː‿wʌf! ʔawooooːː"
     }
@@ -100,7 +105,8 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Ignis Colossus",
         "voice_type": "baritone",
-        "base_pitch_hz": 65.0
+        "base_pitch_hz": 65.0,
+        "growl_roughness": 0.85
       },
       "utterance": [
         {
@@ -220,7 +226,8 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Lama Tenzin",
         "voice_type": "baritone",
-        "base_pitch_hz": 68.0
+        "base_pitch_hz": 68.0,
+        "growl_roughness": 0.70
       },
       "utterance": [
         {
@@ -277,7 +284,8 @@ window.BUILTIN_PRESETS = [
       "speaker": {
         "name": "Apex Beast",
         "voice_type": "baritone",
-        "base_pitch_hz": 110.0
+        "base_pitch_hz": 110.0,
+        "growl_roughness": 0.75
       },
       "utterance": [
         {
