@@ -1,5 +1,258 @@
 [
   {
+    "id": "cfb42a8d-aa66-4197-abd0-c4ad9e875bf0",
+    "timestamp": "2026-09-10T02:52:12.191515+00:00",
+    "preset_id": "human_tibetan_throat_singing",
+    "preset_name": "Tibetan Kargyraa (Throat Singing Benchmark)",
+    "language": "Tibetan Kargyraa (Throat Singing Benchmark)",
+    "engine_mode": "neural",
+    "script_text": "[{\"phrase\":\"Oooommm\",\"phonation\":\"growl\"},{\"break\":\"breath\"},{\"phrase\":\"Aaaa-eeee\",\"phonation\":\"growl\"}]",
+    "scores": {
+      "smoothness": 9,
+      "realism": 6,
+      "pronunciation": 6,
+      "prosody": 8,
+      "bioacoustics": 6,
+      "cleanliness": 7,
+      "elevenlabs_parity": 6
+    },
+    "tags": [],
+    "notes": "tibetan throat singing is very song-like and guttural (deep in the throat).  It should be drawn out with very long vowels.  We need a way to symbolize that.",
+    "speaker_params": {
+      "name": "Lama Tenzin",
+      "voice_type": "baritone",
+      "base_pitch_hz": 68
+    }
+  },
+  {
+    "id": "433aed42-0939-4aca-a0a2-374ccebd5195",
+    "timestamp": "2026-09-10T02:51:30.802554+00:00",
+    "preset_id": "human_english_vowels_diphthongs",
+    "preset_name": "English (Cursive Vowel Glide Benchmark)",
+    "language": "English (Cursive Vowel Glide Benchmark)",
+    "engine_mode": "neural",
+    "script_text": "wiː‿sɔː juː‿ɡoʊ",
+    "scores": {
+      "smoothness": 9,
+      "realism": 9,
+      "pronunciation": 9,
+      "prosody": 9,
+      "bioacoustics": 9,
+      "cleanliness": 9,
+      "elevenlabs_parity": 6
+    },
+    "tags": [],
+    "notes": "not bad at all just a bit robotic",
+    "speaker_params": {
+      "name": "Aria Voice",
+      "voice_type": "natural_female",
+      "base_pitch_hz": 175,
+      "speed_rate": 1
+    }
+  },
+  {
+    "id": "4cf28a4e-d283-4ad4-bb64-42b258ba9de6",
+    "timestamp": "2026-09-10T02:50:58.584250+00:00",
+    "preset_id": "predator_growl_to_howl",
+    "preset_name": "Apex Predator (Growl to Howl Transition)",
+    "language": "Apex Predator (Growl to Howl Transition)",
+    "engine_mode": "neural",
+    "script_text": "k͡rˠaː ʔ awooooːː",
+    "scores": {
+      "smoothness": 9,
+      "realism": 9,
+      "pronunciation": 7,
+      "prosody": 8,
+      "bioacoustics": 3,
+      "cleanliness": 8,
+      "elevenlabs_parity": 6
+    },
+    "tags": [],
+    "notes": "Should be rougher like an animal.",
+    "speaker_params": {
+      "name": "Apex Beast",
+      "voice_type": "baritone",
+      "base_pitch_hz": 110
+    }
+  },
+  {
+    "id": "676e28a2-f5f3-415c-9d7b-bd964074dabf",
+    "timestamp": "2026-09-10T02:47:21.305215+00:00",
+    "preset_id": "feline_predator",
+    "preset_name": "Zha-Kari (Feline Predator Conlang)",
+    "language": "Zha-Kari (Feline Predator Conlang)",
+    "engine_mode": "neural",
+    "script_text": "k͡rˠaː‿ʃuː ʔ pʬ̃ərː",
+    "scores": {
+      "smoothness": 9,
+      "realism": 6,
+      "pronunciation": 9,
+      "prosody": 7,
+      "bioacoustics": 9,
+      "cleanliness": 9,
+      "elevenlabs_parity": 8
+    },
+    "tags": [],
+    "notes": "This is very good and the purr again is excellent.",
+    "speaker_params": {
+      "name": "Vakkar Shadow-Stalker",
+      "voice_type": "baritone",
+      "base_pitch_hz": 135,
+      "speed_rate": 0.9
+    }
+  },
+  {
+    "id": "ba42c41d-db3a-41b3-a754-febb96e6fea4",
+    "timestamp": "2026-09-10T02:46:20.931998+00:00",
+    "preset_id": "feline_domestic_conversation",
+    "preset_name": "Meow-Lish (Domestic Felid Conlang)",
+    "language": "Meow-Lish (Domestic Felid Conlang)",
+    "engine_mode": "neural",
+    "script_text": "Trrrt ʔ Mraow ʔ pʬ̃ərː",
+    "scores": {
+      "smoothness": 7,
+      "realism": 7,
+      "pronunciation": 2,
+      "prosody": 7,
+      "bioacoustics": 9,
+      "cleanliness": 6,
+      "elevenlabs_parity": 6
+    },
+    "tags": [],
+    "notes": "The \"trrrt\" has the letters being spelled out (T R R R T).  It should be more like a short T (trilled R) T, somewhat like trit but the \"ri\" is a trilled r.\nThe purr (pʬ̃ərː) is AMAZING and perfect.",
+    "speaker_params": {
+      "name": "Mochi",
+      "voice_type": "natural_female",
+      "base_pitch_hz": 195
+    }
+  },
+  {
+    "id": "b3d9ed76-9481-4a3e-a14e-4e51eb97677d",
+    "timestamp": "2026-09-10T02:43:51.664716+00:00",
+    "preset_id": "dragon_mythic_roar",
+    "preset_name": "Draconic (Mythic Colossal Conlang)",
+    "language": "Draconic (Mythic Colossal Conlang)",
+    "engine_mode": "neural",
+    "script_text": "Krrgh ʔ Roaaar",
+    "scores": {
+      "smoothness": 1,
+      "realism": 4,
+      "pronunciation": 1,
+      "prosody": 5,
+      "bioacoustics": 1,
+      "cleanliness": 6,
+      "elevenlabs_parity": 1
+    },
+    "tags": [],
+    "notes": "Krrgh is being spelled out K R R G H.  Roaaar is being pronounced as \"ro\" and aaar (like the letter R).\nRoaaar should be pronounced like an actual roar.  Perhaps we need more extended IPA to represent such a thing?",
+    "speaker_params": {
+      "name": "Ignis Colossus",
+      "voice_type": "baritone",
+      "base_pitch_hz": 65
+    }
+  },
+  {
+    "id": "e2910da6-d613-4783-9156-0115037d5402",
+    "timestamp": "2026-09-10T02:41:34.211081+00:00",
+    "preset_id": "canine_wolf_pack_chorus",
+    "preset_name": "Wolf Pack (Chorus & Intonation)",
+    "language": "Wolf Pack (Chorus & Intonation)",
+    "engine_mode": "neural",
+    "script_text": "ɡˠarː‿wʌf! ʔ awooooːː",
+    "scores": {
+      "smoothness": 7,
+      "realism": 7,
+      "pronunciation": 6,
+      "prosody": 7,
+      "bioacoustics": 5,
+      "cleanliness": 7,
+      "elevenlabs_parity": 5
+    },
+    "tags": [],
+    "notes": "Same as the canine example, these are wolves and the voicing should be \"rougher\" (like a wolf growling to a certain extent).",
+    "speaker_params": {
+      "name": "Timber Wolf Alpha",
+      "voice_type": "baritone",
+      "base_pitch_hz": 125
+    }
+  },
+  {
+    "id": "0c0f860c-cb9e-4ab6-9bd6-d3e1a6b33e1c",
+    "timestamp": "2026-09-10T02:40:24.919049+00:00",
+    "preset_id": "alien_click_tonal",
+    "preset_name": "Xylos (Tonal Click Conlang)",
+    "language": "Xylos (Tonal Click Conlang)",
+    "engine_mode": "neural",
+    "script_text": "[{\"phrase\":\"kǀiː‿ʃuː\",\"tone\":\"51 35\",\"phonation\":\"modal\"},{\"break\":\"glottal_stop\"},{\"phrase\":\"kǃaː‿kǁuː\",\"tone\":\"214 55\",\"phonation\":\"modal\"}]",
+    "scores": {
+      "smoothness": 8,
+      "realism": 7,
+      "pronunciation": 9,
+      "prosody": 6,
+      "bioacoustics": null,
+      "cleanliness": 9,
+      "elevenlabs_parity": 7
+    },
+    "tags": [],
+    "notes": "overall pretty good",
+    "speaker_params": {
+      "name": "Kalo the Storyteller",
+      "voice_type": "natural_male",
+      "base_pitch_hz": 145,
+      "speed_rate": 0.95
+    }
+  },
+  {
+    "id": "a12c5235-5feb-41b1-9bc5-bdf570963b07",
+    "timestamp": "2026-09-10T02:40:20.275148+00:00",
+    "preset_id": "canine_pack_alert",
+    "preset_name": "Kavrok (Canine Conlang)",
+    "language": "Kavrok (Canine Conlang)",
+    "engine_mode": "neural",
+    "script_text": "wʌf ʔ ɡˠarː‿awooooːː wiː‿sɔː",
+    "scores": {
+      "smoothness": 8,
+      "realism": 7,
+      "pronunciation": 4,
+      "prosody": 6,
+      "bioacoustics": 3,
+      "cleanliness": 6,
+      "elevenlabs_parity": 5
+    },
+    "tags": [],
+    "notes": "This is a canine langauge, so the voice should sound just a bit rougher.  The oooo in \"awoooo\" isn't being held long enough.  Perhaps 3 or more of the same vowel should be held longer based on the count?",
+    "speaker_params": {
+      "name": "Garrow Alpha",
+      "voice_type": "baritone",
+      "base_pitch_hz": 135
+    }
+  },
+  {
+    "id": "b38b7902-63fa-4aee-8bfe-ea1842586d00",
+    "timestamp": "2026-09-10T02:37:56.684151+00:00",
+    "preset_id": "avian_songbird_syrinx",
+    "preset_name": "Aves (Songbird Syrinx Conlang)",
+    "language": "Aves (Songbird Syrinx Conlang)",
+    "engine_mode": "neural",
+    "script_text": "t͡siː‿wiː t͡siː‿wiː wiː‿sɔː wiː‿sɔː",
+    "scores": {
+      "smoothness": 8,
+      "realism": 7,
+      "pronunciation": 9,
+      "prosody": 9,
+      "bioacoustics": null,
+      "cleanliness": 7,
+      "elevenlabs_parity": 7
+    },
+    "tags": [],
+    "notes": "it sounds like it's in some kind of electronic chamber.  The voice is clear enough but has an electronic backtone.",
+    "speaker_params": {
+      "name": "Songbird",
+      "voice_type": "soprano",
+      "base_pitch_hz": 240
+    }
+  },
+  {
     "id": "bb6a0631-39c3-4aa0-8194-b74171a57393",
     "timestamp": "2026-09-09T20:49:34.898546+00:00",
     "preset_id": "alien_click_tonal",

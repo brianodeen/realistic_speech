@@ -740,13 +740,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         syncCurrentPresetFeedbackToStore();
 
+        const scoresToSend = { ...evalState.scores };
+        if (scoresToSend.bioacoustics === "NA" || scoresToSend.bioacoustics === "N/A") {
+            scoresToSend.bioacoustics = null;
+        }
+
         const payload = {
             preset_id: evalState.lastSynthesisInfo.preset_id,
             preset_name: evalState.lastSynthesisInfo.preset_name,
             language: evalState.lastSynthesisInfo.language,
             engine_mode: evalState.lastSynthesisInfo.engine_mode,
             script_text: evalState.lastSynthesisInfo.script_text || "",
-            scores: evalState.scores,
+            scores: scoresToSend,
             tags: Array.from(evalState.tags),
             notes: notes,
             speaker_params: currentScript.speaker || {},
@@ -760,8 +765,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || "Submission failed");
+                const errData = await res.json().catch(() => ({}));
+                let msg = "Submission failed";
+                if (typeof errData.detail === "string") {
+                    msg = errData.detail;
+                } else if (Array.isArray(errData.detail)) {
+                    msg = errData.detail.map(d => `${d.loc ? d.loc.slice(1).join('.') + ': ' : ''}${d.msg}`).join("; ");
+                } else if (errData.detail) {
+                    msg = JSON.stringify(errData.detail);
+                }
+                throw new Error(msg);
             }
 
             statusEl.className = "eval-status-message success";

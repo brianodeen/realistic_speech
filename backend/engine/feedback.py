@@ -9,7 +9,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
@@ -17,13 +17,38 @@ FEEDBACK_FILE = os.path.join(DATA_DIR, "evaluations.json")
 
 
 class MetricScores(BaseModel):
-    smoothness: int = Field(..., ge=1, le=10, description="Smoothness & Cursive Flow (1-10)")
-    realism: int = Field(..., ge=1, le=10, description="Realism & Fleshiness (1-10)")
-    pronunciation: int = Field(..., ge=1, le=10, description="Pronunciation & Articulatory Precision (1-10)")
-    prosody: int = Field(..., ge=1, le=10, description="Prosody & Intonation Expressiveness (1-10)")
-    bioacoustics: Optional[int] = Field(default=None, ge=1, le=10, description="Extended Bioacoustic & Alien Authenticity (1-10 or None)")
-    cleanliness: int = Field(..., ge=1, le=10, description="Acoustic Cleanliness & Clarity (1-10)")
-    elevenlabs_parity: int = Field(..., ge=1, le=10, description="Overall ElevenLabs-Parity Benchmark (1-10)")
+    smoothness: Optional[int] = Field(default=8, ge=1, le=10, description="Smoothness & Cursive Flow (1-10)")
+    realism: Optional[int] = Field(default=8, ge=1, le=10, description="Realism & Fleshiness (1-10)")
+    pronunciation: Optional[int] = Field(default=8, ge=1, le=10, description="Pronunciation & Articulatory Precision (1-10)")
+    prosody: Optional[int] = Field(default=8, ge=1, le=10, description="Prosody & Intonation Expressiveness (1-10)")
+    bioacoustics: Optional[int] = Field(default=None, description="Extended Bioacoustic & Alien Authenticity (1-10 or None)")
+    cleanliness: Optional[int] = Field(default=8, ge=1, le=10, description="Acoustic Cleanliness & Clarity (1-10)")
+    elevenlabs_parity: Optional[int] = Field(default=7, ge=1, le=10, description="Overall ElevenLabs-Parity Benchmark (1-10)")
+
+    @field_validator("bioacoustics", mode="before")
+    @classmethod
+    def clean_bioacoustics(cls, v):
+        if v in ("NA", "N/A", "null", None, ""):
+            return None
+        try:
+            val = int(v)
+            if val < 1 or val > 10:
+                raise ValueError("Score must be between 1 and 10")
+            return val
+        except (ValueError, TypeError) as e:
+            if "between 1 and 10" in str(e):
+                raise
+            return None
+
+    @field_validator("smoothness", "realism", "pronunciation", "prosody", "cleanliness", "elevenlabs_parity", mode="before")
+    @classmethod
+    def clean_int_scores(cls, v):
+        if v is None or v in ("null", "", "NA", "N/A"):
+            return 8
+        val = int(v)
+        if val < 1 or val > 10:
+            raise ValueError("Score must be between 1 and 10")
+        return val
 
 
 class EvaluationSubmission(BaseModel):
