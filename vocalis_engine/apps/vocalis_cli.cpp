@@ -64,8 +64,8 @@ int main(int argc, char* argv[]) {
     std::cout << "[VocalisEngine] Synthesizing acoustic stream...\n";
     AudioBuffer audio = conductor.synthesizeExtIPA(ipaString);
 
-    std::cout << "[VocalisEngine] Exporting " << audio.durationSeconds() << "s audio to " << outputPath << "...\n";
-    bool success = platform::WavWriter::writeFloat(outputPath, audio);
+    std::cout << "[VocalisEngine] Exporting " << audio.durationSeconds() << "s audio to " << outputPath << " (16-bit PCM WAV)...\n";
+    bool success = platform::WavWriter::writePcm16(outputPath, audio);
 
     if (success) {
         std::cout << "[VocalisEngine] Successfully generated " << outputPath << "!\n";

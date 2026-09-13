@@ -172,6 +172,21 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         sampleIndex = blockEnd;
     }
 
+    // Master speech level calibration & peak normalization (-1.5 dB peak)
+    Sample peak = 0.0f;
+    for (size_t i = 0; i < totalSamples; ++i) {
+        Sample absVal = std::abs(output[i]);
+        if (absVal > peak) peak = absVal;
+    }
+    if (peak > 1e-4f) {
+        Sample targetPeak = 0.82f;
+        Sample normGain = targetPeak / peak;
+        if (normGain > 200.0f) normGain = 200.0f;
+        for (size_t i = 0; i < totalSamples; ++i) {
+            output[i] *= normGain;
+        }
+    }
+
     return output;
 }
 

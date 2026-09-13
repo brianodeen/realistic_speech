@@ -73,27 +73,27 @@ void ResonantChambers::updateFilters() noexcept {
 }
 
 Sample ResonantChambers::process(Sample excitation) noexcept {
-    Sample sig = excitation;
+    Sample outSig = 0.0f;
 
-    // Cascade through the formant resonators
+    // Parallel formant filter bank with alternating phase cancellation for natural inter-formant valleys
     for (size_t i = 0; i < MAX_FORMANTS; ++i) {
-        Sample filtered = formantFilters_[i].process(sig);
-        // Blend filtered signal scaled by formant gain
-        sig = static_cast<Sample>(filtered * params_.formants[i].gainLinear);
+        Sample filtered = formantFilters_[i].process(excitation);
+        float phaseSign = (i % 2 == 0) ? 1.0f : -1.0f;
+        outSig += static_cast<Sample>(filtered * params_.formants[i].gainLinear * phaseSign);
     }
 
     // Nasal branch modulation
     if (params_.velicAperture > 0.01) {
-        Sample nasalSig = nasalZeroFilter_.process(sig);
+        Sample nasalSig = nasalZeroFilter_.process(excitation);
         nasalSig = nasalPoleFilter_.process(nasalSig);
-        sig = static_cast<Sample>((1.0 - 0.7 * params_.velicAperture) * sig +
-                                  params_.velicAperture * nasalSig * 1.2);
+        outSig = static_cast<Sample>((1.0 - 0.5 * params_.velicAperture) * outSig +
+                                      params_.velicAperture * nasalSig * 0.8f);
     }
 
     // Viscoelastic tissue damping
-    sig = fleshinessFilter_.process(sig);
+    outSig = fleshinessFilter_.process(outSig);
 
-    return sig;
+    return outSig;
 }
 
 void ResonantChambers::process(SampleSpan buffer) noexcept {

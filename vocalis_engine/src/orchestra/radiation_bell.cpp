@@ -25,15 +25,15 @@ void RadiationBell::updateFilter() noexcept {
 Sample RadiationBell::process(Sample input) noexcept {
     SampleReal in = static_cast<SampleReal>(input);
 
-    // First-order acoustic radiation boundary differentiation:
+    // First-order acoustic radiation boundary differentiation (+6 dB/octave):
     // y[n] = x[n] - alpha * x[n-1]
     SampleReal rad = in - params_.radiationDerivativeFactor * lastInput_;
     lastInput_ = in;
 
-    // Apply high-pass baffle filter for smooth spherical wave dispersal
-    Sample filtered = radiationFilter_.process(static_cast<Sample>(rad));
+    // Dispersal gain calibration
+    SampleReal output = rad * 6.0 * params_.sphericalRadiationGain;
 
-    return static_cast<Sample>(filtered * params_.sphericalRadiationGain);
+    return static_cast<Sample>(output);
 }
 
 void RadiationBell::process(SampleSpan buffer) noexcept {
