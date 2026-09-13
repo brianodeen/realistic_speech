@@ -62,35 +62,67 @@ python test_engine.py
 
 ```
 realistic_speech/
-├── run_studio.py                      # One-click launcher script
-├── test_engine.py                     # Acoustic engine unit tests
+├── vocalis_engine/                    # VocalisEngine: C++20 Biomechanical Acoustic Engine
+│   ├── CMakeLists.txt                 # CMake configuration
+│   ├── include/vocalis/               # Master headers & public API
+│   │   ├── types.hpp                  # Sample types & C2 smootherstep
+│   │   ├── vocalis.hpp                # Umbrella header
+│   │   ├── dsp/                       # Biquads, PolyBLEP, Splines, Noise
+│   │   ├── orchestra/                 # The 6 anatomical instruments & Conductor
+│   │   ├── extipa/                    # ExtIPA parser, target DB & cursive compounder
+│   │   ├── voice/                     # Speaker profiles & presets
+│   │   └── platform/                  # Zero-dependency WAV file writer
+│   ├── src/                           # Engine implementation files
+│   ├── apps/                          # vocalis_cli standalone tool
+│   ├── benchmarks/                    # High-throughput RTF benchmark (300x+ RTF)
+│   └── tests/                         # Unit tests (DSP, parser, coarticulation)
+├── documents/
+│   ├── ground_up_cpp_speech_engine_specification.md # Architectural specification
+│   └── parametric_spectral_synthesis_architecture.md
+├── run_studio.py                      # One-click launcher script for web visual studio
+├── test_engine.py                     # Python acoustic engine unit tests
 ├── requirements.txt                   # Dependency list
 ├── phonetic_symbol_reference.md       # JSON/YAML to Extended IPA reference guide
-├── backend/
-│   ├── app.py                         # FastAPI REST & WebSocket server
-│   ├── engine/
-│   │   ├── __init__.py
-│   │   ├── schema.py                  # Pydantic data models for conlang scripts
-│   │   ├── articulatory.py            # Phonetic lookup tables, formants, IPA mappings
-│   │   ├── glottal.py                 # Rosenberg/LF glottal pulses, vocal fry, breathiness
-│   │   ├── bioacoustics.py            # Feline purr/growl/hiss, canine snarl/bark/whine/howl
-│   │   ├── prosody.py                 # Chao 5-level tones, Bézier pitch splines, volume envelopes
-│   │   ├── tract.py                   # Time-varying digital formant filter cascade (F1-F5)
-│   │   └── synthesizer.py             # Master 44.1kHz synthesis pipeline
-│   └── presets/                       # Conlang script presets
-│       ├── feline_predator.yaml
-│       ├── canine_pack_alert.yaml
-│       ├── alien_click_tonal.yaml
-│       └── mandarin_tonal_humanoid.yaml
-└── frontend/
-    ├── index.html                     # Studio layout
-    ├── css/
-    │   └── studio.css                 # Dark pro-audio theme
-    └── js/
-        ├── app.js                     # Master frontend coordinator
-        ├── timeline.js                # Syllable & phoneme sequencer
-        ├── pitch_canvas.js            # Tone & pitch contour spline canvas
-        ├── visualizer.js              # Real-time spectrogram & FFT visualizer
-        ├── webaudio_synth.js          # Client-side audio previewer
-        └── yaml_sync.js               # Bi-directional YAML/JSON sync
+├── backend/                           # Python FastAPI REST & WebSocket server
+└── frontend/                          # Interactive Pro-Audio Web Visual Studio
+```
+
+---
+
+## VocalisEngine (C++20 Native Engine)
+
+A first-principles biomechanical and organological acoustic speech engine ("Anatomy as an Orchestra of Instruments") running with zero third-party dependencies, featuring continuous $C^2$ Hermite smootherstep cursive coarticulation, LF-model glottal excitation, African velaric clicks, and creature bioacoustics.
+
+### Building VocalisEngine
+
+Requires a modern C++20 compiler (MSVC 2022/2026, GCC 11+, or Clang 13+):
+
+```bash
+# Configure build
+cmake -B vocalis_engine/build -S vocalis_engine
+
+# Build Release binaries
+cmake --build vocalis_engine/build --config Release
+```
+
+### Running Tests & Benchmarks
+
+```bash
+# Run unit tests
+./vocalis_engine/build/Release/test_dsp.exe
+./vocalis_engine/build/Release/test_parser.exe
+./vocalis_engine/build/Release/test_coarticulation.exe
+
+# Run real-time factor benchmark (>300x real-time performance)
+./vocalis_engine/build/Release/synthesis_benchmark.exe
+```
+
+### Command-Line Speech Synthesis (CLI)
+
+```bash
+# Synthesize human speech from ExtIPA
+./vocalis_engine/build/Release/vocalis_cli.exe -i "m-a-m-a" -o mama.wav
+
+# Synthesize creature vocalization (feline purrs, clicks, growls)
+./vocalis_engine/build/Release/vocalis_cli.exe -i "[ǀ] uː ʬ̃ ʭ" -p feline -o beast.wav
 ```

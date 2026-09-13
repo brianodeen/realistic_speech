@@ -48,3 +48,19 @@ venv.bak/
 *~
 .DS_Store
 Thumbs.db
+
+# C++ / CMake build outputs
+build/
+*/build/
+vocalis_engine/build/
+*.obj
+*.o
+*.lib
+*.a
+*.exp
+*.ilk
+*.pdb
+*.exe
+.vs/
+CMakeSettings.json
+CMakeUserPresets.json
