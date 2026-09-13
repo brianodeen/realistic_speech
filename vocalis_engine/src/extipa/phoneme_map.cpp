@@ -48,7 +48,18 @@ PhonemeDatabase::PhonemeDatabase() {
     // --- Nasal Consonants ---
     registerTarget({"m", ArticulationType::Nasal, 250.0, 1100.0, 2400.0, 3300.0, 4300.0, 1.0, 1.0, 0.0, 5000.0, 2000.0, 90.0, 0.0});
     registerTarget({"n", ArticulationType::Nasal, 280.0, 1600.0, 2700.0, 3500.0, 4500.0, 1.0, 1.0, 0.0, 5000.0, 2000.0, 85.0, 0.0});
+    registerTarget({"ɲ", ArticulationType::Nasal, 280.0, 2100.0, 2800.0, 3600.0, 4600.0, 1.0, 0.9, 0.0, 5000.0, 2000.0, 85.0, 0.0});
     registerTarget({"ŋ", ArticulationType::Nasal, 300.0, 2000.0, 2800.0, 3600.0, 4600.0, 1.0, 1.0, 0.0, 5000.0, 2000.0, 95.0, 0.0});
+
+    // --- Liquids & Approximants ---
+    registerTarget({"r", ArticulationType::Approximant, 450.0, 1300.0, 1700.0, 3300.0, 4300.0, 1.0, 0.0, 35.0, 2000.0, 1500.0, 75.0, 0.0});
+    registerTarget({"l", ArticulationType::Approximant, 380.0, 1100.0, 2800.0, 3500.0, 4500.0, 1.0, 0.0, 40.0, 3000.0, 2000.0, 85.0, 0.0});
+    registerTarget({"j", ArticulationType::Approximant, 280.0, 2250.0, 2900.0, 3600.0, 4600.0, 1.0, 0.0, 45.0, 3500.0, 2000.0, 80.0, 0.0});
+    registerTarget({"w", ArticulationType::Approximant, 300.0, 750.0, 2200.0, 3400.0, 4400.0, 1.0, 0.0, 35.0, 2000.0, 1500.0, 80.0, 1.5});
+
+    // --- Affricates ---
+    registerTarget({"tʃ", ArticulationType::Affricate, 350.0, 1800.0, 2800.0, 3700.0, 4700.0, 0.0, 0.0, 6.0, 4000.0, 2200.0, 90.0, 0.2});
+    registerTarget({"dʒ", ArticulationType::Affricate, 370.0, 1850.0, 2850.0, 3700.0, 4700.0, 0.6, 0.0, 7.0, 4000.0, 2200.0, 95.0, 0.2});
 
     // --- Fricatives ---
     registerTarget({"s", ArticulationType::Fricative, 300.0, 1600.0, 2700.0, 3600.0, 4600.0, 0.0, 0.0, 5.0, 6500.0, 2500.0, 100.0, 0.0});
