@@ -14,10 +14,38 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         return trajectory;
     }
 
-    // First pass: Calculate total duration of the utterance
+    // First pass: Calculate token durations with stress timing & pre-pausal lengthening
+    std::vector<SampleReal> durations(tokens.size(), 0.0);
     SampleReal totalUtteranceSec = 0.0;
-    for (const auto& tok : tokens) {
-        totalUtteranceSec += std::max(0.04, tok.durationMs * 0.001);
+
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto& tok = tokens[i];
+        const auto& tgt = tok.target;
+        SampleReal baseDur = std::max(0.035, tok.durationMs * 0.001);
+
+        // Check if final token in the utterance (pre-pausal lengthening)
+        bool isFinal = (i + 1 == tokens.size() || 
+                       (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
+
+        // Stress timing rhythm hierarchy:
+        // Long vowels, diphthongs, and tokens with pitchScale > 1.05 are stressed lexical targets
+        bool isLong = (tok.symbol.find("ː") != std::string::npos ||
+                       tok.symbol == "oʊ" || tok.symbol == "aɪ" || tok.symbol == "eɪ" ||
+                       tok.symbol == "aʊ" || tok.symbol == "ɔɪ");
+        bool isStressed = isLong || (tok.pitchScale > 1.05);
+        bool isWeak = (!isStressed && (tgt.type == ArticulationType::Approximant || tgt.baseDurationMs < 95.0));
+
+        SampleReal timingFactor = 1.0;
+        if (isFinal) {
+            timingFactor *= 1.35; // Universal pre-pausal lengthening
+        } else if (isStressed) {
+            timingFactor *= 1.25; // Stressed syllables are elongated
+        } else if (isWeak) {
+            timingFactor *= 0.72; // Reduced unstressed syllables
+        }
+
+        durations[i] = baseDur * timingFactor;
+        totalUtteranceSec += durations[i];
     }
     if (totalUtteranceSec < 0.1) totalUtteranceSec = 0.1;
 
@@ -27,17 +55,20 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         const auto& tok = tokens[i];
         const auto& tgt = tok.target;
 
-        SampleReal durSec = std::max(0.04, tok.durationMs * 0.001);
-        SampleReal transSec = std::min(0.030, durSec * 0.28);
+        SampleReal durSec = durations[i];
+        SampleReal transSec = std::min(0.025, durSec * 0.25);
+
+        bool isFinal = (i + 1 == tokens.size() || 
+                       (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
 
         // Compute natural sentence-level intonation contour:
-        // 1. Natural declarative declination: starts at +6% and gently falls to -15%
+        // 1. Natural declarative declination: starts at +5% and gently falls to -18%
         SampleReal normTime = std::clamp((currentTimeSec + durSec * 0.5) / totalUtteranceSec, 0.0, 1.0);
-        SampleReal declination = 1.06 - 0.22 * normTime;
+        SampleReal declination = 1.05 - 0.20 * normTime;
 
         // 2. Word / syllable stress pitch accents:
-        // Peak intonation on middle syllables (e.g. "saw" around 30-50% progress)
-        SampleReal accent = 0.08 * std::sin(PI * normTime);
+        bool isStressed = (durSec > 0.16);
+        SampleReal accent = isStressed ? (0.09 * std::sin(PI * normTime)) : 0.0;
 
         // 3. User / token pitch multiplier (or Chao tone)
         SampleReal tokenPitchMultiplier = tok.pitchScale;
@@ -55,6 +86,7 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         }
 
         bool isStop = (tgt.type == ArticulationType::StopPlosive);
+        bool isVoicedVowel = (tgt.type == ArticulationType::Vowel && tgt.voicingRatio > 0.5);
 
         if (isStop) {
             // Stop plosive:
@@ -92,9 +124,57 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             ptEnd.clickFrequencyHz = 0.0;
             trajectory.push_back(ptEnd);
 
+        } else if (isVoicedVowel) {
+            // Dynamic 3-point intra-vowel pitch gesture (replaces robotic flat holds)
+            SampleReal f0Onset  = targetF0 * (isFinal ? 1.01 : 0.96);
+            SampleReal f0Peak   = targetF0 * (isFinal ? 0.98 : 1.05);
+            SampleReal f0Offset = targetF0 * (isFinal ? 0.82 : 0.94); // terminal cadence on final syllable
+
+            // Point 1: Onset
+            ArticulatoryTrajectoryPoint pt1;
+            pt1.timeSec = currentTimeSec + transSec;
+            pt1.f0 = f0Onset;
+            pt1.f1 = tgt.f1;
+            pt1.f2 = tgt.f2;
+            pt1.f3 = tgt.f3;
+            pt1.f4 = tgt.f4;
+            pt1.f5 = tgt.f5;
+            pt1.lungPressurePa = lungPres;
+            pt1.constrictionAperture = tgt.constrictionAperture;
+            pt1.noiseCenterFreq = tgt.noiseCenterFreq;
+            pt1.noiseBandwidth = tgt.noiseBandwidth;
+            pt1.velicAperture = tgt.velicAperture;
+            pt1.voicingRatio = tgt.voicingRatio;
+            pt1.lipRoundingCm = tgt.lipRoundingCm;
+            pt1.isGlottalStop = tok.isGlottalStop;
+            pt1.purrActive = tgt.purrActive;
+            pt1.growlActive = tgt.growlActive;
+            pt1.snarlActive = tgt.snarlActive;
+            pt1.clickFrequencyHz = tgt.clickFrequencyHz;
+
+            // Point 2: Nucleus Accent Crest (~38% of vowel duration)
+            ArticulatoryTrajectoryPoint pt2 = pt1;
+            pt2.timeSec = currentTimeSec + durSec * 0.38;
+            pt2.f0 = f0Peak;
+
+            // Point 3: Offset Glide (~85% of vowel duration)
+            ArticulatoryTrajectoryPoint pt3 = pt1;
+            pt3.timeSec = currentTimeSec + durSec - transSec;
+            pt3.f0 = f0Offset;
+
+            // If initial phone, add t=0 anchor
+            if (trajectory.empty() && pt1.timeSec > 0.0) {
+                ArticulatoryTrajectoryPoint ptInitial = pt1;
+                ptInitial.timeSec = 0.0;
+                trajectory.push_back(ptInitial);
+            }
+
+            trajectory.push_back(pt1);
+            trajectory.push_back(pt2);
+            trajectory.push_back(pt3);
+
         } else {
-            // Vowels, Approximants, and Fricatives:
-            // Point 1: Reaches steady-state target posture at start of hold
+            // Consonants, Approximants, and Fricatives:
             ArticulatoryTrajectoryPoint ptHoldStart;
             ptHoldStart.timeSec = currentTimeSec + transSec;
             ptHoldStart.f0 = targetF0;

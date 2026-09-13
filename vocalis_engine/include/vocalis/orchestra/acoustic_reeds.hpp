@@ -68,9 +68,10 @@ private:
     SampleReal syrinxLeftPhase_{0.0};   // Avian left syrinx phase [0, 1)
     SampleReal syrinxRightPhase_{0.0};  // Avian right syrinx phase [0, 1)
 
-    // Stochastic state
+    // Stochastic and filter state
     SampleReal currentJitterOffset_{0.0};
     SampleReal currentShimmerFactor_{1.0};
+    SampleReal tiltState_{0.0};
     size_t periodSampleCount_{0};
 };
 

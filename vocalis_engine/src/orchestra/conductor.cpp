@@ -128,12 +128,12 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         bioParams.nominalF0Hz = currentF0;
         bioacoustics_.setParams(bioParams);
 
-        // Update Instrument 5: Resonating Chambers
-        chambers_.setFormant(0, currentF1, 80.0, 1.0);
-        chambers_.setFormant(1, currentF2, 110.0, 0.7);
-        chambers_.setFormant(2, currentF3, 160.0, 0.45);
-        chambers_.setFormant(3, currentF4, 200.0, 0.25);
-        chambers_.setFormant(4, currentF5, 250.0, 0.15);
+        // Update Instrument 5: Resonating Chambers (realistic anatomical lossy tissue damping)
+        chambers_.setFormant(0, currentF1, 120.0, 1.0);
+        chambers_.setFormant(1, currentF2, 150.0, 0.7);
+        chambers_.setFormant(2, currentF3, 240.0, 0.45);
+        chambers_.setFormant(3, currentF4, 350.0, 0.25);
+        chambers_.setFormant(4, currentF5, 500.0, 0.15);
         chambers_.setVelicAperture(currentVelic);
 
         // Update Instrument 6: Radiation Bell

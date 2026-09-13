@@ -39,6 +39,7 @@ venv.bak/
 *.wav
 *.mp3
 !backend/presets/*.wav
+!we_saw_you_go.wav
 
 # IDE & Editor files
 .vscode/

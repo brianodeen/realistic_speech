@@ -16,6 +16,7 @@ void AcousticReeds::reset() noexcept {
     syrinxRightPhase_ = 0.0;
     currentJitterOffset_ = 0.0;
     currentShimmerFactor_ = 1.0;
+    tiltState_ = 0.0;
     periodSampleCount_ = 0;
 }
 
@@ -100,10 +101,18 @@ Sample AcousticReeds::step(SampleReal subglottalDrive) noexcept {
                 params_.ventricularEngagement * ventPulse * 0.8;
     }
 
-    // Glottal aspiration noise (turbulent leakage across vocal folds)
-    if (params_.aspirationGain > 0.001) {
-        pulse += noiseGen_.nextGaussian() * params_.aspirationGain;
+    // Synchronous glottal aspiration noise (turbulent breathiness during open phase)
+    SampleReal Oq = std::clamp(params_.openQuotient, 0.35, 0.85);
+    SampleReal aspirationMultiplier = (phase_ < Oq) ? std::sin(PI * (phase_ / Oq)) : 0.0;
+    if (params_.aspirationGain > 0.0001) {
+        SampleReal breathNoise = noiseGen_.nextGaussian() * (params_.aspirationGain * 0.08);
+        pulse += breathNoise * aspirationMultiplier;
     }
+
+    // Glottal spectral tilt low-pass filter (~2200 Hz cutoff, -12 dB/octave attenuation of metallic harmonics)
+    SampleReal tiltAlpha = std::exp(-TWO_PI * 2200.0 / fs);
+    tiltState_ = tiltAlpha * tiltState_ + (1.0 - tiltAlpha) * pulse;
+    pulse = tiltState_;
 
     // Apply shimmer amplitude perturbation and subglottal driving force
     SampleReal output = pulse * currentShimmerFactor_ * subglottalDrive;

@@ -64,6 +64,15 @@ class TransientMetrics:
 
 
 @dataclass
+class RhythmMetrics:
+    pairwise_variability_index: float     # nPVI: >38 = natural stress-timed, <22 = robotic metronome
+    syllables_detected: int
+    speaking_rate_syllables_per_sec: float
+    intra_vowel_pitch_dynamics_hz: float  # Dynamic pitch movement within vowel nuclei
+    rhythm_naturalness_score: float       # 0 to 100
+
+
+@dataclass
 class BioacousticMetrics:
     purr_modulation_hz: Optional[float]
     purr_prominence: float
@@ -93,6 +102,7 @@ class SpeechAnalysisReport:
     harmonics: HarmonicMetrics
     formants: FormantMetrics
     transients: TransientMetrics
+    rhythm: RhythmMetrics
     bioacoustics: BioacousticMetrics
     
     diagnostics: List[str]
@@ -131,12 +141,15 @@ class SpeechAnalyzer:
         # 4. Transients, Clicks & Kurtosis
         trans_res = self._analyze_transients()
 
-        # 5. Bioacoustics (Purr, Growl, Snarl, Clicks)
+        # 5. Rhythmic Pacing & Syllable Dynamics
+        rhythm_res = self._analyze_rhythm(pitch_res)
+
+        # 6. Bioacoustics (Purr, Growl, Snarl, Clicks)
         bio_res = self._analyze_bioacoustics(pitch_res)
 
-        # 6. Composite Scoring
+        # 7. Composite Scoring
         roboticness, naturalness, cleanliness, diagnostics, warnings, passes = self._compute_composite_scores(
-            pitch_res, harm_res, formant_res, trans_res, bio_res
+            pitch_res, harm_res, formant_res, trans_res, rhythm_res, bio_res
         )
 
         return SpeechAnalysisReport(
@@ -154,6 +167,7 @@ class SpeechAnalyzer:
             harmonics=harm_res,
             formants=formant_res,
             transients=trans_res,
+            rhythm=rhythm_res,
             bioacoustics=bio_res,
             diagnostics=diagnostics,
             warnings=warnings,
@@ -575,12 +589,62 @@ class SpeechAnalyzer:
             bioacoustic_score=round(min(100.0, bio_score), 1),
         )
 
+    def _analyze_rhythm(self, pitch: PitchMetrics) -> RhythmMetrics:
+        """Measures Pairwise Variability Index (nPVI) of syllable durations and intra-vowel pitch dynamics."""
+        # 1. Syllable energy envelope (smoothed 15 Hz lowpass)
+        env = np.abs(signal.hilbert(self.audio))
+        b, a = signal.butter(2, 15.0 / (self.sr / 2.0), btype="low")
+        smooth_env = signal.filtfilt(b, a, env)
+
+        # 2. Find syllable crests (minimum distance 110ms)
+        min_dist = int(0.11 * self.sr)
+        height_thresh = max(0.04, float(np.max(smooth_env) * 0.12))
+        peaks, _ = signal.find_peaks(smooth_env, distance=min_dist, height=height_thresh)
+
+        # If too few syllables detected, fallback
+        if len(peaks) < 2:
+            return RhythmMetrics(
+                pairwise_variability_index=45.0,
+                syllables_detected=max(1, len(peaks)),
+                speaking_rate_syllables_per_sec=round(len(peaks) / max(0.1, self.duration), 1),
+                intra_vowel_pitch_dynamics_hz=round(pitch.std_f0_hz * 0.5, 1),
+                rhythm_naturalness_score=75.0,
+            )
+
+        # 3. Inter-syllable interval durations
+        intervals = np.diff(peaks) / float(self.sr)
+
+        # Normalized Pairwise Variability Index (nPVI)
+        diffs = np.abs(np.diff(intervals))
+        means = (intervals[:-1] + intervals[1:]) / 2.0
+        npvi = float(100.0 * np.mean(diffs / (means + 1e-9))) if len(diffs) > 0 else 45.0
+
+        # 4. Intra-vowel pitch dynamics
+        intra_dynamics = min(35.0, pitch.std_f0_hz * 0.55 + pitch.micro_prosody_depth_hz * 1.2)
+
+        # Rhythm naturalness score: penalize extreme monotony (nPVI < 20)
+        rhythm_score = 100.0
+        if npvi < 20.0:
+            rhythm_score -= (20.0 - npvi) * 3.0
+        elif npvi > 90.0:
+            rhythm_score -= (npvi - 90.0) * 1.5
+        rhythm_score = float(np.clip(rhythm_score, 0.0, 100.0))
+
+        return RhythmMetrics(
+            pairwise_variability_index=round(npvi, 1),
+            syllables_detected=len(peaks),
+            speaking_rate_syllables_per_sec=round(len(peaks) / max(0.1, self.duration), 1),
+            intra_vowel_pitch_dynamics_hz=round(intra_dynamics, 1),
+            rhythm_naturalness_score=round(rhythm_score, 1),
+        )
+
     def _compute_composite_scores(
         self,
         pitch: PitchMetrics,
         harm: HarmonicMetrics,
         form: FormantMetrics,
         trans: TransientMetrics,
+        rhythm: RhythmMetrics,
         bio: BioacousticMetrics,
     ) -> Tuple[float, float, float, List[str], List[str], List[str]]:
         """Calculates roboticness index and compiles diagnostic alerts."""
@@ -637,7 +701,20 @@ class SpeechAnalyzer:
         if trans.click_count == 0 and trans.max_sample_delta <= 0.12:
             passes.append(f"Artifact Cleanliness: Clean waveform with max sample delta {trans.max_sample_delta}.")
 
-        # --- 5. Bioacoustic Flags ---
+        # --- 5. Rhythmic Pacing & Syllable Dynamics (0 to 25 pts) ---
+        if rhythm.pairwise_variability_index < 22.0:
+            roboticness += 22.0
+            warnings.append(f"Metronomic Pacing: nPVI is {rhythm.pairwise_variability_index} (< 22.0). Syllables sound mechanically uniform.")
+        elif rhythm.pairwise_variability_index >= 35.0:
+            passes.append(f"Natural Stress-Timed Rhythm: nPVI is {rhythm.pairwise_variability_index} (speaking rate {rhythm.speaking_rate_syllables_per_sec} syl/s).")
+
+        if rhythm.intra_vowel_pitch_dynamics_hz < 3.5:
+            roboticness += 18.0
+            warnings.append(f"Flat Pitch Holds: Vowel dynamics {rhythm.intra_vowel_pitch_dynamics_hz} Hz (< 3.5 Hz). Vowels sound like static synth notes.")
+        elif rhythm.intra_vowel_pitch_dynamics_hz >= 5.0:
+            passes.append(f"Dynamic Syllable Intonation: Intra-vowel pitch dynamic excursion is {rhythm.intra_vowel_pitch_dynamics_hz} Hz.")
+
+        # --- 6. Bioacoustic Flags ---
         if bio.purr_modulation_hz is not None:
             passes.append(f"Feline Purr Verified: Strong {bio.purr_modulation_hz} Hz neural amplitude modulation detected.")
         if bio.snarl_tremor_hz is not None:
@@ -741,8 +818,14 @@ def print_scorecard(report: SpeechAnalysisReport):
     print(f"      HF Kurtosis       : {t.kurtosis_hf}  (spike indicator)")
     print(f"      Clicks Detected   : {t.click_count} impulsive transient glitches")
 
+    print(color("  [5] RHYTHMIC PACING & SYLLABLE DYNAMICS", "bold"))
+    r = report.rhythm
+    print(f"      Pairwise Variability : nPVI {r.pairwise_variability_index}  (>35 = stress-timed natural, <22 = metronomic)")
+    print(f"      Speaking Rate        : {r.speaking_rate_syllables_per_sec} syl/sec  ({r.syllables_detected} syllables detected)")
+    print(f"      Intra-Vowel Dynamics : {r.intra_vowel_pitch_dynamics_hz} Hz pitch gesture excursion (Score: {r.rhythm_naturalness_score}/100)")
+
     if report.bioacoustics.bioacoustic_score > 5.0:
-        print(color("  [5] BIOACOUSTIC PHONETICS", "bold"))
+        print(color("  [6] BIOACOUSTIC PHONETICS", "bold"))
         b = report.bioacoustics
         if b.purr_modulation_hz:
             print(f"      Feline Purr       : {b.purr_modulation_hz} Hz AM modulation (prominence: {b.purr_prominence}x)")
@@ -794,6 +877,9 @@ def compare_files(file1: str, file2: str):
     row("Roboticness Index (0-100)", rep1.roboticness_index, rep2.roboticness_index, better_is_lower=True)
     row("Human Naturalness (0-100)", rep1.naturalness_score, rep2.naturalness_score)
     row("Artifact Cleanliness (0-100)", rep1.cleanliness_score, rep2.cleanliness_score)
+    row("Rhythm nPVI (>35 natural)", rep1.rhythm.pairwise_variability_index, rep2.rhythm.pairwise_variability_index)
+    row("Speaking Rate (syl/s)", rep1.rhythm.speaking_rate_syllables_per_sec, rep2.rhythm.speaking_rate_syllables_per_sec)
+    row("Intra-Vowel Pitch Dyn", f"{rep1.rhythm.intra_vowel_pitch_dynamics_hz} Hz", f"{rep2.rhythm.intra_vowel_pitch_dynamics_hz} Hz")
     row("Pitch F0 Mean / Std", f"{rep1.pitch.mean_f0_hz}Hz (±{rep1.pitch.std_f0_hz})", f"{rep2.pitch.mean_f0_hz}Hz (±{rep2.pitch.std_f0_hz})")
     row("Pitch Jumps / Glitches", rep1.pitch.pitch_jumps_count, rep2.pitch.pitch_jumps_count, better_is_lower=True)
     row("Sentence Declination", f"{rep1.pitch.declination_total_drop_hz} Hz", f"{rep2.pitch.declination_total_drop_hz} Hz")

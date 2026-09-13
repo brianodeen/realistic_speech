@@ -38,19 +38,25 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
 
         // Handle punctuation & delimiters
         if (c == '?' || c == '!' || c == '.' || c == ',' || c == ';' || c == ':' ||
-            c == '[' || c == ']' || c == '/' || c == '-' || std::isspace(static_cast<unsigned char>(c))) {
+            c == '[' || c == ']' || c == '/' || c == '-' || c == '\'' || std::isspace(static_cast<unsigned char>(c))) {
             
             if (c == '?' && !tokens.empty()) {
                 tokens.back().pitchScale = 1.25; // Interrogative rising cadence
             } else if (c == '!' && !tokens.empty()) {
-                tokens.back().pitchScale = 1.15; // Exclamation emphasis
-            } else if (c == '.' || c == ',' || c == ';' || std::isspace(static_cast<unsigned char>(c))) {
+                tokens.back().pitchScale = 1.18; // Exclamation emphasis
+            } else if (c == '.' || c == ',' || c == ';' || c == ':') {
                 if (!tokens.empty() && tokens.back().target.type != ArticulationType::Silence) {
                     ExtIPAToken pauseToken;
-                    pauseToken.symbol = " ";
+                    pauseToken.symbol = "_";
                     pauseToken.target = db.getOrDefault("_");
-                    pauseToken.durationMs = (c == '.') ? 120.0 : ((c == ',' || c == ';') ? 60.0 : 40.0);
+                    pauseToken.durationMs = (c == '.') ? 120.0 : 60.0;
                     tokens.push_back(pauseToken);
+                }
+            } else if (c == '\'') {
+                // Primary stress mark: emphasize following token
+                if (!tokens.empty()) {
+                    tokens.back().pitchScale = 1.15;
+                    tokens.back().durationMs *= 1.2;
                 }
             }
             ++i;
@@ -122,6 +128,15 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
         if (isLigature(glyph)) {
             if (!tokens.empty()) {
                 tokens.back().coarticulatedWithNext = true;
+            }
+            i += len;
+            continue;
+        }
+
+        if (glyph == "ˈ" || glyph == "ˌ") {
+            if (!tokens.empty()) {
+                tokens.back().pitchScale = (glyph == "ˈ") ? 1.15 : 1.08;
+                tokens.back().durationMs *= (glyph == "ˈ") ? 1.25 : 1.12;
             }
             i += len;
             continue;
