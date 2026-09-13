@@ -51,10 +51,11 @@ Sample FrictionNozzles::step(SampleReal airflowDrive) noexcept {
         turbulence = filteredNoise * flowVelocity * apertureGain * 0.4;
     }
 
-    // Process plosive release transient burst
+    // Process plosive release transient burst (bandlimited through vocal tract nozzle bandpass)
     if (burstDecay_ > 0.001) {
-        Sample burstSample = noiseGen_.nextWhite() * static_cast<Sample>(burstDecay_);
-        turbulence += burstSample * 0.6;
+        Sample burstNoise = bandpassFilter_.process(noiseGen_.nextWhite());
+        Sample burstSample = burstNoise * static_cast<Sample>(burstDecay_);
+        turbulence += burstSample * 0.2;
         // Fast exponential decay (~5-15 ms burst duration)
         SampleReal decayFactor = std::exp(-500.0 / static_cast<SampleReal>(sampleRate_));
         burstDecay_ *= decayFactor;

@@ -66,10 +66,12 @@ PhonemeDatabase::PhonemeDatabase() {
     registerTarget({"dʒ", ArticulationType::Affricate, 370.0, 1850.0, 2850.0, 3700.0, 4700.0, 0.6, 0.0, 7.0, 4000.0, 2200.0, 95.0, 0.2});
 
     // --- Fricatives ---
-    registerTarget({"s", ArticulationType::Fricative, 300.0, 1600.0, 2700.0, 3600.0, 4600.0, 0.0, 0.0, 5.0, 6500.0, 2500.0, 100.0, 0.0});
-    registerTarget({"z", ArticulationType::Fricative, 320.0, 1650.0, 2750.0, 3600.0, 4600.0, 0.5, 0.0, 6.0, 6500.0, 2500.0, 100.0, 0.0});
+    registerTarget({"s", ArticulationType::Fricative, 350.0, 1800.0, 3500.0, 5500.0, 7200.0, 0.0, 0.0, 5.0, 6500.0, 2500.0, 100.0, 0.0});
+    registerTarget({"z", ArticulationType::Fricative, 370.0, 1850.0, 3500.0, 5500.0, 7200.0, 0.5, 0.0, 6.0, 6500.0, 2500.0, 100.0, 0.0});
     registerTarget({"ʃ", ArticulationType::Fricative, 350.0, 1800.0, 2800.0, 3700.0, 4700.0, 0.0, 0.0, 8.0, 3500.0, 1800.0, 110.0, 0.5});
     registerTarget({"ʒ", ArticulationType::Fricative, 370.0, 1850.0, 2850.0, 3700.0, 4700.0, 0.5, 0.0, 9.0, 3500.0, 1800.0, 110.0, 0.5});
+    registerTarget({"θ", ArticulationType::Fricative, 260.0, 1400.0, 2500.0, 3500.0, 4500.0, 0.0, 0.0, 6.0, 5000.0, 3000.0, 90.0, 0.0});
+    registerTarget({"ð", ArticulationType::Fricative, 280.0, 1450.0, 2550.0, 3500.0, 4500.0, 0.6, 0.0, 7.0, 5000.0, 3000.0, 90.0, 0.0});
     registerTarget({"f", ArticulationType::Fricative, 250.0, 1200.0, 2400.0, 3300.0, 4300.0, 0.0, 0.0, 7.0, 2500.0, 3000.0, 90.0, 0.0});
     registerTarget({"v", ArticulationType::Fricative, 280.0, 1250.0, 2450.0, 3300.0, 4300.0, 0.6, 0.0, 8.0, 2500.0, 3000.0, 90.0, 0.0});
     registerTarget({"x", ArticulationType::Fricative, 450.0, 1400.0, 2300.0, 3300.0, 4300.0, 0.0, 0.0, 10.0, 1400.0, 1200.0, 110.0, 0.0});
@@ -82,6 +84,14 @@ PhonemeDatabase::PhonemeDatabase() {
     registerTarget({"d", ArticulationType::StopPlosive, 270.0, 1650.0, 2750.0, 3500.0, 4500.0, 0.6, 0.0, 0.0, 4500.0, 2000.0, 70.0, 0.0});
     registerTarget({"k", ArticulationType::StopPlosive, 300.0, 1800.0, 2600.0, 3500.0, 4500.0, 0.0, 0.0, 0.0, 2400.0, 1800.0, 80.0, 0.0});
     registerTarget({"g", ArticulationType::StopPlosive, 320.0, 1850.0, 2650.0, 3500.0, 4500.0, 0.6, 0.0, 0.0, 2400.0, 1800.0, 80.0, 0.0});
+    registerTarget({"ɡ", ArticulationType::StopPlosive, 320.0, 1850.0, 2650.0, 3500.0, 4500.0, 0.6, 0.0, 0.0, 2400.0, 1800.0, 80.0, 0.0});
+
+    // --- Diphthongs ---
+    registerTarget({"oʊ", ArticulationType::Vowel, 480.0, 920.0, 2300.0, 3400.0, 4400.0, 1.0, 0.0, 45.0, 5000.0, 2000.0, 170.0, 1.3});
+    registerTarget({"aɪ", ArticulationType::Vowel, 650.0, 1700.0, 2700.0, 3500.0, 4500.0, 1.0, 0.0, 55.0, 5000.0, 2000.0, 170.0, 0.0});
+    registerTarget({"eɪ", ArticulationType::Vowel, 420.0, 2050.0, 2650.0, 3550.0, 4550.0, 1.0, 0.0, 52.0, 5000.0, 2000.0, 160.0, 0.0});
+    registerTarget({"aʊ", ArticulationType::Vowel, 650.0, 1050.0, 2350.0, 3450.0, 4450.0, 1.0, 0.0, 50.0, 5000.0, 2000.0, 170.0, 1.0});
+    registerTarget({"ɔɪ", ArticulationType::Vowel, 500.0, 1500.0, 2550.0, 3500.0, 4500.0, 1.0, 0.0, 50.0, 5000.0, 2000.0, 170.0, 0.5});
 
     // --- Glottal Stop ---
     registerTarget({"ʔ", ArticulationType::GlottalStop, 150.0, 1200.0, 2400.0, 3400.0, 4400.0, 0.0, 0.0, 0.0, 1000.0, 1000.0, 40.0, 0.0});

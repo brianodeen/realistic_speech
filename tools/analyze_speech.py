@@ -476,7 +476,11 @@ class SpeechAnalyzer:
         # Penalize high max_delta (>0.15) and click count
         delta_penalty = max(0.0, (max_delta - 0.12) * 200.0)
         click_penalty = min(70.0, click_count * 12.0)
-        kurt_penalty = max(0.0, (kurtosis - 15.0) * 0.8)
+        # Kurtosis penalty is mild if no isolated clicks were detected
+        if click_count > 0:
+            kurt_penalty = max(0.0, (kurtosis - 15.0) * 0.8)
+        else:
+            kurt_penalty = min(10.0, max(0.0, (kurtosis - 30.0) * 0.2))
         cleanliness = max(0.0, 100.0 - delta_penalty - click_penalty - kurt_penalty)
 
         return TransientMetrics(
@@ -497,6 +501,7 @@ class SpeechAnalyzer:
 
         # Welch PSD of envelope
         f_env, p_env = signal.welch(env_sub - np.mean(env_sub), sub_sr, nperseg=min(512, len(env_sub)))
+        total_env_power = float(np.sum(p_env) + 1e-12)
 
         # A. Feline Purr Search (20 - 32 Hz)
         purr_mask = (f_env >= 20.0) & (f_env <= 32.0)
@@ -508,7 +513,9 @@ class SpeechAnalyzer:
             max_idx = np.argmax(purr_band_p)
             baseline = np.median(p_env[(f_env >= 10.0) & (f_env <= 60.0)]) + 1e-12
             prominence = purr_band_p[max_idx] / baseline
-            if prominence > 2.5:
+            purr_power_ratio = float(np.sum(purr_band_p) / total_env_power)
+            # Genuine purr gating requires concentrated envelope modulation (>3.5% power) and high prominence (>4x)
+            if prominence > 4.0 and purr_power_ratio > 0.035:
                 purr_hz = float(purr_band_f[max_idx])
                 purr_prom = float(prominence)
 
@@ -522,7 +529,8 @@ class SpeechAnalyzer:
             max_idx = np.argmax(snarl_band_p)
             baseline = np.median(p_env[(f_env >= 10.0) & (f_env <= 60.0)]) + 1e-12
             prominence = snarl_band_p[max_idx] / baseline
-            if prominence > 2.5:
+            snarl_power_ratio = float(np.sum(snarl_band_p) / total_env_power)
+            if prominence > 4.0 and snarl_power_ratio > 0.035:
                 snarl_hz = float(snarl_band_f[max_idx])
                 snarl_prom = float(prominence)
 
@@ -541,7 +549,9 @@ class SpeechAnalyzer:
         b, a = signal.butter(4, [1500.0 / (self.sr / 2.0), 4500.0 / (self.sr / 2.0)], btype="band")
         click_band = signal.filtfilt(b, a, self.audio)
         click_env = np.abs(signal.hilbert(click_band))
-        click_peaks, _ = signal.find_peaks(click_env, height=0.15, distance=int(0.040 * self.sr))
+        # Velaric suction clicks are extremely fast transient spikes (<15ms half-width)
+        max_width_samples = int(0.015 * self.sr)
+        click_peaks, _ = signal.find_peaks(click_env, height=0.25, distance=int(0.040 * self.sr), width=(1, max_width_samples))
         velaric_clicks = len(click_peaks)
 
         # Composite Bioacoustic Score (0 - 100)
@@ -550,7 +560,7 @@ class SpeechAnalyzer:
             bio_score += min(50.0, purr_prom * 10.0)
         if snarl_hz is not None:
             bio_score += min(40.0, snarl_prom * 8.0)
-        if subharm_ratio > 0.15:
+        if subharm_ratio > 0.25:
             bio_score += min(40.0, subharm_ratio * 60.0)
         if velaric_clicks > 0:
             bio_score += min(30.0, velaric_clicks * 10.0)
