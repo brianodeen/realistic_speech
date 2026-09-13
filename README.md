@@ -126,3 +126,33 @@ cmake --build vocalis_engine/build --config Release
 # Synthesize creature vocalization (feline purrs, clicks, growls)
 ./vocalis_engine/build/Release/vocalis_cli.exe -i "[ǀ] uː ʬ̃ ʭ" -p feline -o beast.wav
 ```
+
+---
+
+## Objective Speech & Roboticness Audio Analyzer
+
+An automated signal-processing-based acoustic evaluator (`analyze_speech.py` / `tools/analyze_speech.py`) that objectively scores audio for naturalness, roboticness, click/impulse artifacts, formant prominence, and bioacoustic features.
+
+### Usage
+
+```bash
+# Detailed terminal scorecard audit of a speech file
+python analyze_speech.py we_saw_you_go.wav
+
+# Side-by-side comparative analysis of two audio files
+python analyze_speech.py --compare file1.wav file2.wav
+
+# Batch audit across an entire phrasebook directory
+python analyze_speech.py --batch path/to/phrasebook_wavs/
+
+# Machine-readable JSON metrics for CI/CD pipelines
+python analyze_speech.py we_saw_you_go.wav --json
+```
+
+### Metrics Evaluated
+
+- **Roboticness Index (0 to 100)**: Evaluates $F_0$ pitch monotony, pitch discontinuities, harmonic buzz index, and lack of natural micro-prosody. (Lower is better).
+- **Human Naturalness Score (0 to 100)**: Measures continuous pitch contour, sentence declination, natural jitter (0.5%–2%) & shimmer (2%–5%), and formant contrast. (Higher is better).
+- **Artifact Cleanliness (0 to 100)**: Detects impulsive clicks, high-frequency kurtosis spikes, and sample-to-sample derivative cliffs ($|\Delta s| > 0.15$).
+- **Bioacoustic Phonetics**: Detects 20–30 Hz feline purr amplitude modulation, 40–55 Hz canine snarl tremor, ventricular growl subharmonics ($F_0/2$), and velaric suction clicks.
+
