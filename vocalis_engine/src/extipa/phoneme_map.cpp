@@ -38,6 +38,10 @@ PhonemeDatabase::PhonemeDatabase() {
     registerTarget({"o", ArticulationType::Vowel, 500.0, 950.0, 2400.0, 3400.0, 4400.0, 1.0, 0.0, 45.0, 5000.0, 2000.0, 140.0, 1.2});
     registerTarget({"ɛ", ArticulationType::Vowel, 580.0, 1750.0, 2600.0, 3600.0, 4600.0, 1.0, 0.0, 55.0, 5000.0, 2000.0, 120.0, 0.0});
     registerTarget({"ɔ", ArticulationType::Vowel, 600.0, 1050.0, 2500.0, 3500.0, 4500.0, 1.0, 0.0, 50.0, 5000.0, 2000.0, 130.0, 0.8});
+    registerTarget({"iː", ArticulationType::Vowel, 270.0, 2300.0, 3000.0, 3600.0, 4600.0, 1.0, 0.0, 50.0, 5000.0, 2000.0, 180.0, 0.0});
+    registerTarget({"uː", ArticulationType::Vowel, 310.0, 800.0, 2200.0, 3400.0, 4400.0, 1.0, 0.0, 40.0, 5000.0, 2000.0, 180.0, 1.5});
+    registerTarget({"ɔː", ArticulationType::Vowel, 580.0, 950.0, 2500.0, 3500.0, 4500.0, 1.0, 0.0, 50.0, 5000.0, 2000.0, 190.0, 0.8});
+    registerTarget({"ʊ", ArticulationType::Vowel, 430.0, 1050.0, 2300.0, 3400.0, 4400.0, 1.0, 0.0, 45.0, 5000.0, 2000.0, 110.0, 0.8});
     registerTarget({"y", ArticulationType::Vowel, 300.0, 2100.0, 2800.0, 3500.0, 4500.0, 1.0, 0.0, 45.0, 5000.0, 2000.0, 130.0, 1.0});
     registerTarget({"ɯ", ArticulationType::Vowel, 320.0, 1350.0, 2350.0, 3450.0, 4450.0, 1.0, 0.0, 45.0, 5000.0, 2000.0, 130.0, 0.0});
 

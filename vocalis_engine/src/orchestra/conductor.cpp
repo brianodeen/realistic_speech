@@ -62,6 +62,7 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
 
     size_t trajIdx = 0;
     size_t sampleIndex = 0;
+    int lastPlosiveTrajIdx = -1;
 
     bellows_.reset();
     reeds_.reset();
@@ -102,8 +103,9 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         // Update Instrument 1: Air Bellows
         bellows_.setLungPressure(currentPressure);
 
-        // Update Instrument 2: Acoustic Reeds
-        reeds_.setF0(currentF0);
+        // Update Instrument 2: Acoustic Reeds with subtle organic micro-vibrato (4.8 Hz, 1.0 Hz depth)
+        SampleReal vibrato = 1.0 * std::sin(TWO_PI * 4.8 * blockCurrentTime);
+        reeds_.setF0(currentF0 + vibrato);
 
         // Update Instrument 3: Friction Nozzles
         ConstrictionParams cParams = nozzles_.params();
@@ -112,9 +114,10 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         cParams.bandwidthHz = interpolate_smootherstep(p0.noiseBandwidth, p1.noiseBandwidth, w);
         nozzles_.setParams(cParams);
 
-        // Check click trigger
-        if (p0.clickFrequencyHz > 100.0 && tNorm < 0.1) {
-            nozzles_.triggerPlosiveBurst(1.5);
+        // Check plosive / click release trigger (triggers strictly ONCE per keyframe boundary)
+        if (p0.clickFrequencyHz > 100.0 && static_cast<int>(trajIdx) != lastPlosiveTrajIdx) {
+            nozzles_.triggerPlosiveBurst(0.8);
+            lastPlosiveTrajIdx = static_cast<int>(trajIdx);
         }
 
         // Update Instrument 4: Bioacoustic Modulator

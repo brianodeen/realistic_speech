@@ -20,30 +20,31 @@ void AcousticReeds::reset() noexcept {
 }
 
 SampleReal AcousticReeds::evaluateLF(SampleReal phaseNormalized, SampleReal /*f0*/) noexcept {
-    // Liljencrants-Fant (LF) parametric glottal flow derivative model
+    // Continuous, bandlimited Liljencrants-Fant glottal flow derivative model
     // phaseNormalized in [0.0, 1.0)
-    // Tp is peak flow instant, Te is excitation epoch instant (closing finish)
-    SampleReal Oq = std::clamp(params_.openQuotient, 0.25, 0.9);
-    SampleReal Sq = std::clamp(params_.speedQuotient, 1.1, 4.0);
+    SampleReal Oq = std::clamp(params_.openQuotient, 0.35, 0.85);
+    SampleReal Sq = std::clamp(params_.speedQuotient, 1.2, 3.5);
 
-    // Te occurs around Oq
     SampleReal Te = Oq;
+    SampleReal Tp = Te * (Sq / (Sq + 1.0)); // Peak flow velocity instant
 
-    if (phaseNormalized < Te) {
-        // Open phase (0 to Te): growing sinusoidal pulse with exponential growth
-        SampleReal t = phaseNormalized / Te;
-        SampleReal alpha = 1.5;
-        SampleReal omega = PI * (1.0 + 0.1 * (Sq - 2.0));
-        SampleReal flowDeriv = std::exp(alpha * t) * std::sin(omega * t);
-        return flowDeriv;
+    if (phaseNormalized < Tp) {
+        // Phase 1: Opening acceleration (0 <= t < Tp)
+        // Smooth raised-cosine rise: zero derivative at t=0 and t=Tp
+        SampleReal u = phaseNormalized / Tp;
+        return 0.5 * (1.0 - std::cos(PI * u));
+    } else if (phaseNormalized < Te) {
+        // Phase 2: Closing deceleration (Tp <= t < Te)
+        // Transitions continuously from +1.0 down to -Ee at Te
+        SampleReal u = (phaseNormalized - Tp) / (Te - Tp);
+        SampleReal Ee = 1.0;
+        return std::cos(HALF_PI * u) - Ee * std::sin(HALF_PI * u);
     } else {
-        // Return phase (Te to 1.0): exponential recovery to zero baseline
-        SampleReal Ta = std::max(0.01, (1.0 - Te) * 0.25);
-        SampleReal t = (phaseNormalized - Te);
-        SampleReal epsilon = 1.0 / Ta;
-        SampleReal Ee = 1.0; // Peak negative discontinuity magnitude
-        SampleReal returnPhase = -Ee * std::exp(-epsilon * t);
-        return returnPhase;
+        // Phase 3: Return relaxation phase (Te <= t < 1.0)
+        // Recovers smoothly from -Ee back to exactly 0.0 at t=1.0 with zero discontinuity
+        SampleReal v = (phaseNormalized - Te) / (1.0 - Te);
+        SampleReal Ee = 1.0;
+        return -Ee * std::cos(HALF_PI * v) * std::exp(-3.5 * v);
     }
 }
 
@@ -82,11 +83,8 @@ Sample AcousticReeds::step(SampleReal subglottalDrive) noexcept {
     perturbedF0 = std::clamp(perturbedF0, 20.0, fs * 0.45);
     SampleReal dt = perturbedF0 / fs;
 
-    // Evaluate LF flow derivative
+    // Evaluate smooth LF flow derivative
     SampleReal pulse = evaluateLF(phase_, perturbedF0);
-
-    // Apply PolyBLEP anti-aliasing around phase discontinuity (glottal epoch / wrap)
-    pulse += dsp::polyBlep(phase_, dt);
 
     // Ventricular false vocal fold engagement (subharmonic period doubling/tripling)
     if (params_.ventricularEngagement > 0.01) {

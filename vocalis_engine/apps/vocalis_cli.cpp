@@ -32,6 +32,17 @@ int main(int argc, char* argv[]) {
             return 0;
         } else if ((arg == "-i" || arg == "--ipa") && i + 1 < argc) {
             ipaString = argv[++i];
+        } else if ((arg == "-f" || arg == "--file") && i + 1 < argc) {
+            std::ifstream inFile(argv[++i], std::ios::binary);
+            if (inFile) {
+                std::string content((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+                // Strip BOM if present
+                if (content.size() >= 3 && static_cast<unsigned char>(content[0]) == 0xEF &&
+                    static_cast<unsigned char>(content[1]) == 0xBB && static_cast<unsigned char>(content[2]) == 0xBF) {
+                    content = content.substr(3);
+                }
+                ipaString = content;
+            }
         } else if ((arg == "-o" || arg == "--output") && i + 1 < argc) {
             outputPath = argv[++i];
         } else if ((arg == "-p" || arg == "--preset") && i + 1 < argc) {

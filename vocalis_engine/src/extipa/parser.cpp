@@ -21,7 +21,7 @@ bool ExtIPAParser::isLigature(std::string_view glyph) noexcept {
 }
 
 bool ExtIPAParser::isGlottalStop(std::string_view glyph) noexcept {
-    return glyph == "ʔ" || glyph == "?";
+    return glyph == "ʔ";
 }
 
 bool ExtIPAParser::isLengthMarker(std::string_view glyph) noexcept {
@@ -36,15 +36,22 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
     while (i < utf8Input.size()) {
         char c = utf8Input[i];
 
-        // Skip brackets, hyphens, and whitespace unless handled
-        if (c == '[' || c == ']' || c == '/' || c == '-' || std::isspace(static_cast<unsigned char>(c))) {
-            // Space indicates short pause / word boundary
-            if (std::isspace(static_cast<unsigned char>(c)) && !tokens.empty() && tokens.back().target.type != ArticulationType::Silence) {
-                ExtIPAToken pauseToken;
-                pauseToken.symbol = " ";
-                pauseToken.target = db.getOrDefault("_");
-                pauseToken.durationMs = 80.0;
-                tokens.push_back(pauseToken);
+        // Handle punctuation & delimiters
+        if (c == '?' || c == '!' || c == '.' || c == ',' || c == ';' || c == ':' ||
+            c == '[' || c == ']' || c == '/' || c == '-' || std::isspace(static_cast<unsigned char>(c))) {
+            
+            if (c == '?' && !tokens.empty()) {
+                tokens.back().pitchScale = 1.25; // Interrogative rising cadence
+            } else if (c == '!' && !tokens.empty()) {
+                tokens.back().pitchScale = 1.15; // Exclamation emphasis
+            } else if (c == '.' || c == ',' || c == ';' || std::isspace(static_cast<unsigned char>(c))) {
+                if (!tokens.empty() && tokens.back().target.type != ArticulationType::Silence) {
+                    ExtIPAToken pauseToken;
+                    pauseToken.symbol = " ";
+                    pauseToken.target = db.getOrDefault("_");
+                    pauseToken.durationMs = (c == '.') ? 120.0 : ((c == ',' || c == ';') ? 60.0 : 40.0);
+                    tokens.push_back(pauseToken);
+                }
             }
             ++i;
             continue;

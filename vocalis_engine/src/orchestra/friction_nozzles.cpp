@@ -28,10 +28,6 @@ void FrictionNozzles::triggerPlosiveBurst(SampleReal burstEnergy) noexcept {
 }
 
 Sample FrictionNozzles::step(SampleReal airflowDrive) noexcept {
-    // Detect sudden occlusion release (e.g. stop closure opening quickly)
-    if (lastAperture_ < 1.0 && params_.apertureMm2 >= 1.0 && airflowDrive > 0.1) {
-        triggerPlosiveBurst(0.8);
-    }
     lastAperture_ = params_.apertureMm2;
 
     SampleReal turbulence = 0.0;
