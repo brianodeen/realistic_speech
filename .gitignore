@@ -40,6 +40,7 @@ venv.bak/
 *.mp3
 !backend/presets/*.wav
 !we_saw_you_go.wav
+!vocalis_engine/input/*.mp3
 
 # IDE & Editor files
 .vscode/

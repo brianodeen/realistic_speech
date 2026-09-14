@@ -62,18 +62,15 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
                        (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
 
         // Compute natural sentence-level intonation contour:
-        // 1. Natural declarative declination: starts at +5% and gently falls to -18%
+        // Baseline declination slope from 1.0 down to 0.75 across the utterance
         SampleReal normTime = std::clamp((currentTimeSec + durSec * 0.5) / totalUtteranceSec, 0.0, 1.0);
-        SampleReal declination = 1.05 - 0.20 * normTime;
+        SampleReal declination = 1.0 - 0.25 * normTime;
 
-        // 2. Word / syllable stress pitch accents:
-        bool isStressed = (durSec > 0.16);
-        SampleReal accent = isStressed ? (0.09 * std::sin(PI * normTime)) : 0.0;
+        // Word / syllable stress pitch accents:
+        bool hasPitchAccent = (tok.pitchScale > 1.05);
+        SampleReal accent = hasPitchAccent ? (0.30 * (tok.pitchScale - 1.0) / 0.25) : 0.0;
 
-        // 3. User / token pitch multiplier (or Chao tone)
-        SampleReal tokenPitchMultiplier = tok.pitchScale;
-
-        SampleReal targetF0 = baseF0 * (declination + accent) * tokenPitchMultiplier;
+        SampleReal targetF0 = baseF0 * (declination + accent);
 
         // Determine aerodynamic subglottal lung pressure
         SampleReal lungPres = 850.0;
@@ -125,18 +122,70 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             trajectory.push_back(ptEnd);
 
         } else if (isVoicedVowel) {
-            // Dynamic 3-point intra-vowel pitch gesture (replaces robotic flat holds)
-            SampleReal f0Onset  = targetF0 * (isFinal ? 1.01 : 0.96);
-            SampleReal f0Peak   = targetF0 * (isFinal ? 0.98 : 1.05);
-            SampleReal f0Offset = targetF0 * (isFinal ? 0.82 : 0.94); // terminal cadence on final syllable
+            // Natural sentence intonation gesture
+            SampleReal f0Onset, f0Peak, f0Offset;
+            if (hasPitchAccent) {
+                // Nuclear pitch accent crest & descent (e.g. "saw")
+                f0Onset  = targetF0 * 1.08;
+                f0Peak   = targetF0 * 1.04;
+                f0Offset = targetF0 * 0.88; // Glides smoothly down into post-accent syllable
+            } else if (isFinal) {
+                // Sentence-final declarative cadence (e.g. "go")
+                f0Onset  = targetF0 * 0.95;
+                f0Peak   = targetF0 * 0.88;
+                f0Offset = targetF0 * 0.72; // Drops down to low declarative floor
+            } else if (currentTimeSec < totalUtteranceSec * 0.25) {
+                // Unstressed sentence-initial syllable (e.g. "We")
+                f0Onset  = targetF0 * 0.96;
+                f0Peak   = targetF0 * 1.06;
+                f0Offset = targetF0 * 0.98;
+            } else {
+                // Unstressed medial bridge (e.g. "you")
+                f0Onset  = targetF0 * 0.92;
+                f0Peak   = targetF0 * 0.90;
+                f0Offset = targetF0 * 0.88;
+            }
+
+            // Dynamic diphthong formant transitions
+            SampleReal f1Onset = tgt.f1;
+            SampleReal f2Onset = tgt.f2;
+            SampleReal f3Onset = tgt.f3;
+            SampleReal lipOnset = tgt.lipRoundingCm;
+
+            SampleReal f1Offset = tgt.f1;
+            SampleReal f2Offset = tgt.f2;
+            SampleReal f3Offset = tgt.f3;
+            SampleReal lipOffset = tgt.lipRoundingCm;
+
+            if (tok.symbol == "oʊ") {
+                // [o] -> [ʊ] diphthong glide (e.g. "go")
+                f1Onset = 480.0; f2Onset = 980.0;  f3Onset = 2300.0; lipOnset = 0.8;
+                f1Offset = 400.0; f2Offset = 850.0; f3Offset = 2200.0; lipOffset = 1.6;
+            } else if (tok.symbol == "aɪ") {
+                // [a] -> [ɪ]
+                f1Onset = 750.0; f2Onset = 1250.0; f3Onset = 2500.0;
+                f1Offset = 360.0; f2Offset = 2100.0; f3Offset = 2800.0;
+            } else if (tok.symbol == "eɪ") {
+                // [e] -> [ɪ]
+                f1Onset = 480.0; f2Onset = 1850.0; f3Onset = 2600.0;
+                f1Offset = 360.0; f2Offset = 2200.0; f3Offset = 2800.0;
+            } else if (tok.symbol == "aʊ") {
+                // [a] -> [ʊ]
+                f1Onset = 750.0; f2Onset = 1250.0; f3Onset = 2500.0; lipOnset = 0.0;
+                f1Offset = 440.0; f2Offset = 880.0;  f3Offset = 2200.0; lipOffset = 1.5;
+            } else if (tok.symbol == "ɔɪ") {
+                // [ɔ] -> [ɪ]
+                f1Onset = 550.0; f2Onset = 950.0;  f3Onset = 2400.0; lipOnset = 0.8;
+                f1Offset = 360.0; f2Offset = 2000.0; f3Offset = 2700.0; lipOffset = 0.0;
+            }
 
             // Point 1: Onset
             ArticulatoryTrajectoryPoint pt1;
             pt1.timeSec = currentTimeSec + transSec;
             pt1.f0 = f0Onset;
-            pt1.f1 = tgt.f1;
-            pt1.f2 = tgt.f2;
-            pt1.f3 = tgt.f3;
+            pt1.f1 = f1Onset;
+            pt1.f2 = f2Onset;
+            pt1.f3 = f3Onset;
             pt1.f4 = tgt.f4;
             pt1.f5 = tgt.f5;
             pt1.lungPressurePa = lungPres;
@@ -145,22 +194,30 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             pt1.noiseBandwidth = tgt.noiseBandwidth;
             pt1.velicAperture = tgt.velicAperture;
             pt1.voicingRatio = tgt.voicingRatio;
-            pt1.lipRoundingCm = tgt.lipRoundingCm;
+            pt1.lipRoundingCm = lipOnset;
             pt1.isGlottalStop = tok.isGlottalStop;
             pt1.purrActive = tgt.purrActive;
             pt1.growlActive = tgt.growlActive;
             pt1.snarlActive = tgt.snarlActive;
             pt1.clickFrequencyHz = tgt.clickFrequencyHz;
 
-            // Point 2: Nucleus Accent Crest (~38% of vowel duration)
+            // Point 2: Nucleus Crest (~38% of vowel duration)
             ArticulatoryTrajectoryPoint pt2 = pt1;
             pt2.timeSec = currentTimeSec + durSec * 0.38;
             pt2.f0 = f0Peak;
+            pt2.f1 = f1Onset * 0.6 + f1Offset * 0.4;
+            pt2.f2 = f2Onset * 0.6 + f2Offset * 0.4;
+            pt2.f3 = f3Onset * 0.6 + f3Offset * 0.4;
+            pt2.lipRoundingCm = lipOnset * 0.6 + lipOffset * 0.4;
 
             // Point 3: Offset Glide (~85% of vowel duration)
             ArticulatoryTrajectoryPoint pt3 = pt1;
             pt3.timeSec = currentTimeSec + durSec - transSec;
             pt3.f0 = f0Offset;
+            pt3.f1 = f1Offset;
+            pt3.f2 = f2Offset;
+            pt3.f3 = f3Offset;
+            pt3.lipRoundingCm = lipOffset;
 
             // If initial phone, add t=0 anchor
             if (trajectory.empty() && pt1.timeSec > 0.0) {

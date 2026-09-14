@@ -13,9 +13,12 @@ void Biquad::setResonator(SampleReal centerFreqHz, SampleReal bandwidthHz, uint3
     SampleReal R = std::exp(-PI * bandwidthHz / fs);
     SampleReal theta = TWO_PI * centerFreqHz / fs;
 
-    // y[n] = (1 - R) * x[n] + 2*R*cos(theta)*y[n-1] - R^2*y[n-2]
-    // H(z) = (1 - R) / (1 - 2*R*cos(theta)*z^-1 + R^2*z^-2)
-    coeffs_.b0 = 1.0 - R;
+    // Unit-gain peak normalization:
+    // The denominator magnitude at resonance omega = theta is (1 - R) * sqrt(1 - 2*R*cos(2*theta) + R*R)
+    // Setting b0 = (1 - R) * sqrt(1 - 2*R*cos(2*theta) + R*R) guarantees peak gain |H(e^j*theta)| == 1.0 (0 dB)
+    // across all formant frequencies, eliminating the 23 dB low-frequency bass boost and muffling.
+    SampleReal denom = std::sqrt(1.0 - 2.0 * R * std::cos(2.0 * theta) + R * R);
+    coeffs_.b0 = (1.0 - R) * denom;
     coeffs_.b1 = 0.0;
     coeffs_.b2 = 0.0;
     coeffs_.a1 = -2.0 * R * std::cos(theta);

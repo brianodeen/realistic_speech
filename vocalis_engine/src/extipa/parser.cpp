@@ -32,6 +32,9 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
     std::vector<ExtIPAToken> tokens;
     const auto& db = PhonemeDatabase::instance();
 
+    SampleReal pendingStressPitch = 1.0;
+    SampleReal pendingStressDur = 1.0;
+
     size_t i = 0;
     while (i < utf8Input.size()) {
         char c = utf8Input[i];
@@ -53,11 +56,9 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
                     tokens.push_back(pauseToken);
                 }
             } else if (c == '\'') {
-                // Primary stress mark: emphasize following token
-                if (!tokens.empty()) {
-                    tokens.back().pitchScale = 1.15;
-                    tokens.back().durationMs *= 1.2;
-                }
+                // Primary stress mark: emphasize following syllable
+                pendingStressPitch = 1.25;
+                pendingStressDur = 1.30;
             }
             ++i;
             continue;
@@ -134,10 +135,8 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
         }
 
         if (glyph == "ˈ" || glyph == "ˌ") {
-            if (!tokens.empty()) {
-                tokens.back().pitchScale = (glyph == "ˈ") ? 1.15 : 1.08;
-                tokens.back().durationMs *= (glyph == "ˈ") ? 1.25 : 1.12;
-            }
+            pendingStressPitch = (glyph == "ˈ") ? 1.25 : 1.12;
+            pendingStressDur = (glyph == "ˈ") ? 1.30 : 1.15;
             i += len;
             continue;
         }
@@ -146,7 +145,14 @@ std::vector<ExtIPAToken> ExtIPAParser::parse(std::string_view utf8Input) const {
         ExtIPAToken token;
         token.symbol = std::string(glyph);
         token.target = db.getOrDefault(glyph);
-        token.durationMs = token.target.baseDurationMs;
+        token.durationMs = token.target.baseDurationMs * pendingStressDur;
+        token.pitchScale = pendingStressPitch;
+
+        // Once the vowel nucleus is encountered, consume the pending stress
+        if (token.target.type == ArticulationType::Vowel) {
+            pendingStressPitch = 1.0;
+            pendingStressDur = 1.0;
+        }
 
         if (isGlottalStop(glyph)) {
             token.isGlottalStop = true;

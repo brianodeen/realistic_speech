@@ -128,10 +128,10 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         bioParams.nominalF0Hz = currentF0;
         bioacoustics_.setParams(bioParams);
 
-        // Update Instrument 5: Resonating Chambers (realistic anatomical lossy tissue damping)
-        chambers_.setFormant(0, currentF1, 120.0, 1.0);
-        chambers_.setFormant(1, currentF2, 150.0, 0.7);
-        chambers_.setFormant(2, currentF3, 240.0, 0.45);
+        // Update Instrument 5: Resonating Chambers (calibrated for unit-peak normalized resonators)
+        chambers_.setFormant(0, currentF1, 120.0, 1.00);
+        chambers_.setFormant(1, currentF2, 150.0, 0.65);
+        chambers_.setFormant(2, currentF3, 240.0, 0.40);
         chambers_.setFormant(3, currentF4, 350.0, 0.25);
         chambers_.setFormant(4, currentF5, 500.0, 0.15);
         chambers_.setVelicAperture(currentVelic);
@@ -154,22 +154,26 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
             // 4. Friction Nozzles (turbulence + plosive bursts)
             Sample turbSig = nozzles_.step(effectiveDrive);
 
-            // 5. Mixed source excitation
+            // 5. Source excitation for pharyngeal vocal tract
             Sample excitation = static_cast<Sample>(
                 glottalSig * currentVoicing +
-                turbSig * (1.0 - currentVoicing * 0.7)
+                turbSig * 0.15f * static_cast<Sample>(1.0 - currentVoicing)
             );
 
             // 6. Bioacoustic non-linear delay chaos (predator growl)
             Sample chaotic = bioacoustics_.processChaos(excitation);
 
-            // 7. Resonant Chambers (vocal tract formant filter bank)
+            // 7. Resonant Chambers (vocal tract formant filter bank for voiced speech)
             Sample resonated = chambers_.process(chaotic);
 
-            // 8. Radiation & Coupling Bell (spherical high-pass radiation)
+            // 8. Radiation & Coupling Bell (spherical high-pass radiation for glottal voice)
             Sample radiated = bell_.process(resonated);
 
-            output[s] = radiated;
+            // 9. Anterior turbulence bypass: fricatives & bursts radiate directly into open air
+            // Bypasses the boundary differentiator to prevent 6x noise spike amplification
+            Sample anteriorTurb = static_cast<Sample>(turbSig * (1.0 - currentVoicing * 0.7) * 0.15f);
+
+            output[s] = radiated + anteriorTurb;
         }
 
         sampleIndex = blockEnd;

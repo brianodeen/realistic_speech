@@ -479,18 +479,28 @@ class SpeechAnalyzer:
         else:
             kurtosis = 3.0
 
-        # 3. Count impulsive clicks: peaks in HF envelope > 18x median HF energy
+        # 3. Count impulsive clicks: isolated peaks in HF envelope outside sustained fricatives
         hf_env = np.abs(signal.hilbert(hf_audio))
+        
+        # Smooth envelope to detect sustained frication regions (>20ms of continuous noise)
+        b_fric, a_fric = signal.butter(2, 40.0 / (self.sr / 2.0), btype="low")
+        smooth_fric = signal.filtfilt(b_fric, a_fric, hf_env)
+        is_fricative = smooth_fric > 0.035
+
         med_env = np.median(hf_env)
-        click_thresh = max(0.08, float(med_env * 18.0))
+        click_thresh = max(0.09, float(med_env * 18.0))
         peaks, _ = signal.find_peaks(hf_env, height=click_thresh, distance=int(0.005 * self.sr))
-        click_count = len(peaks)
+        # Only count peaks that occur outside legitimate sustained fricatives (/s/, /ʃ/, /f/)
+        isolated_clicks = [p for p in peaks if not is_fricative[p]]
+        click_count = len(isolated_clicks)
 
         # 4. Cleanliness score calculation:
-        # Penalize high max_delta (>0.15) and click count
-        delta_penalty = max(0.0, (max_delta - 0.12) * 200.0)
-        click_penalty = min(70.0, click_count * 12.0)
-        # Kurtosis penalty is mild if no isolated clicks were detected
+        # Max delta outside fricatives:
+        diff_outside = diff_audio[~is_fricative[:len(diff_audio)]] if len(diff_audio) > 0 else np.array([0.0])
+        max_clean_delta = float(np.max(diff_outside)) if len(diff_outside) > 0 else max_delta
+        
+        delta_penalty = max(0.0, (max_clean_delta - 0.12) * 200.0)
+        click_penalty = min(70.0, click_count * 15.0)
         if click_count > 0:
             kurt_penalty = max(0.0, (kurtosis - 15.0) * 0.8)
         else:

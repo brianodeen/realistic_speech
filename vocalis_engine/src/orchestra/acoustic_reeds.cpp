@@ -109,10 +109,8 @@ Sample AcousticReeds::step(SampleReal subglottalDrive) noexcept {
         pulse += breathNoise * aspirationMultiplier;
     }
 
-    // Glottal spectral tilt low-pass filter (~2200 Hz cutoff, -12 dB/octave attenuation of metallic harmonics)
-    SampleReal tiltAlpha = std::exp(-TWO_PI * 2200.0 / fs);
-    tiltState_ = tiltAlpha * tiltState_ + (1.0 - tiltAlpha) * pulse;
-    pulse = tiltState_;
+    // Natural glottal source has natural -12 dB/octave spectral rolloff from LF flow model;
+    // do not apply extra 2200 Hz choke filter which muffles F2, F3, and consonant clarity.
 
     // Apply shimmer amplitude perturbation and subglottal driving force
     SampleReal output = pulse * currentShimmerFactor_ * subglottalDrive;
