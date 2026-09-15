@@ -41,6 +41,9 @@ public:
     /// y[n] = 2*R*cos(theta)*y[n-1] - R^2*y[n-2] + (1 - R)*x[n]
     void setResonator(SampleReal centerFreqHz, SampleReal bandwidthHz, uint32_t sampleRate) noexcept;
 
+    /// @brief Configure as a Klatt cascade vocal tract resonator normalized to 0 dB (unity gain) at DC
+    void setCascadeResonator(SampleReal centerFreqHz, SampleReal bandwidthHz, uint32_t sampleRate) noexcept;
+
     /// @brief Configure as an anti-resonator (spectral zero / notch) for nasal side-branches
     void setAntiResonator(SampleReal zeroFreqHz, SampleReal bandwidthHz, uint32_t sampleRate) noexcept;
 

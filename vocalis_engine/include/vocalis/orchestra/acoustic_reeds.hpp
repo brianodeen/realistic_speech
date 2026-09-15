@@ -13,7 +13,8 @@ struct GlottalParams {
     SampleReal speedQuotient{2.0};      // Sq: opening / closing time ratio
     SampleReal jitterPercent{0.5};      // Micro pitch perturbation
     SampleReal shimmerPercent{1.0};     // Micro amplitude perturbation
-    SampleReal aspirationGain{0.02};    // Glottal turbulent breathiness
+    SampleReal aspirationGain{0.03};    // Glottal turbulent breathiness
+    SampleReal returnPhaseTa{0.022};    // Normalized return phase time constant (Ta) for high-frequency presence
 
     // Ventricular / False folds
     SampleReal ventricularEngagement{0.0}; // 0.0 to 1.0

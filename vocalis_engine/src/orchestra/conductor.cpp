@@ -98,14 +98,14 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         SampleReal tNorm = std::clamp((blockCurrentTime - p0.timeSec) / segDuration, 0.0, 1.0);
         SampleReal w = smootherstep(tNorm);
 
-        // Control-rate C2 Hermite Smootherstep parameter interpolation
-        SampleReal targetF0 = interpolate_smootherstep(p0.f0, p1.f0, w);
-        SampleReal targetF1 = interpolate_smootherstep(p0.f1, p1.f1, w);
-        SampleReal targetF2 = interpolate_smootherstep(p0.f2, p1.f2, w);
-        SampleReal targetF3 = interpolate_smootherstep(p0.f3, p1.f3, w);
-        SampleReal targetF4 = interpolate_smootherstep(p0.f4, p1.f4, w);
-        SampleReal targetF5 = interpolate_smootherstep(p0.f5, p1.f5, w);
-        SampleReal targetPressure = interpolate_smootherstep(p0.lungPressurePa, p1.lungPressurePa, w);
+        // Control-rate parameter interpolation (w is already Hermite C2 smootherstep)
+        SampleReal targetF0 = lerp(p0.f0, p1.f0, w);
+        SampleReal targetF1 = lerp(p0.f1, p1.f1, w);
+        SampleReal targetF2 = lerp(p0.f2, p1.f2, w);
+        SampleReal targetF3 = lerp(p0.f3, p1.f3, w);
+        SampleReal targetF4 = lerp(p0.f4, p1.f4, w);
+        SampleReal targetF5 = lerp(p0.f5, p1.f5, w);
+        SampleReal targetPressure = lerp(p0.lungPressurePa, p1.lungPressurePa, w);
 
         SampleReal blockDt = static_cast<SampleReal>(blockEnd - sampleIndex) * dt;
 
@@ -118,10 +118,10 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         SampleReal currentF5 = ouF5_.step(targetF5, blockDt, stochasticRng_);
         SampleReal currentPressure = ouPressure_.step(targetPressure, blockDt, stochasticRng_);
 
-        SampleReal currentAperture = interpolate_smootherstep(p0.constrictionAperture, p1.constrictionAperture, w);
-        SampleReal currentVelic = interpolate_smootherstep(p0.velicAperture, p1.velicAperture, w);
-        SampleReal currentVoicing = interpolate_smootherstep(p0.voicingRatio, p1.voicingRatio, w);
-        SampleReal currentLipRound = interpolate_smootherstep(p0.lipRoundingCm, p1.lipRoundingCm, w);
+        SampleReal currentAperture = lerp(p0.constrictionAperture, p1.constrictionAperture, w);
+        SampleReal currentVelic = lerp(p0.velicAperture, p1.velicAperture, w);
+        SampleReal currentVoicing = lerp(p0.voicingRatio, p1.voicingRatio, w);
+        SampleReal currentLipRound = lerp(p0.lipRoundingCm, p1.lipRoundingCm, w);
 
         // Update Instrument 1: Air Bellows
         bellows_.setLungPressure(currentPressure);
@@ -133,8 +133,8 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         // Update Instrument 3: Friction Nozzles
         ConstrictionParams cParams = nozzles_.params();
         cParams.apertureMm2 = currentAperture;
-        cParams.centerFreqHz = interpolate_smootherstep(p0.noiseCenterFreq, p1.noiseCenterFreq, w);
-        cParams.bandwidthHz = interpolate_smootherstep(p0.noiseBandwidth, p1.noiseBandwidth, w);
+        cParams.centerFreqHz = lerp(p0.noiseCenterFreq, p1.noiseCenterFreq, w);
+        cParams.bandwidthHz = lerp(p0.noiseBandwidth, p1.noiseBandwidth, w);
         nozzles_.setParams(cParams);
 
         // Check plosive / click release trigger (triggers strictly ONCE per keyframe boundary)
@@ -151,12 +151,12 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         bioParams.nominalF0Hz = currentF0;
         bioacoustics_.setParams(bioParams);
 
-        // Update Instrument 5: Resonating Chambers (calibrated for unit-peak normalized resonators)
-        chambers_.setFormant(0, currentF1, 120.0, 1.00);
-        chambers_.setFormant(1, currentF2, 150.0, 0.65);
-        chambers_.setFormant(2, currentF3, 240.0, 0.40);
-        chambers_.setFormant(3, currentF4, 350.0, 0.25);
-        chambers_.setFormant(4, currentF5, 500.0, 0.15);
+        // Update Instrument 5: Resonating Chambers (Klatt Cascade Series Resonators)
+        chambers_.setFormant(0, currentF1, 70.0, 1.0);
+        chambers_.setFormant(1, currentF2, 110.0, 1.0);
+        chambers_.setFormant(2, currentF3, 160.0, 1.0);
+        chambers_.setFormant(3, currentF4, 240.0, 1.0);
+        chambers_.setFormant(4, currentF5, 320.0, 1.0);
         chambers_.setVelicAperture(currentVelic);
 
         // Update Instrument 6: Radiation Bell

@@ -25,31 +25,32 @@ void AcousticReeds::reset() noexcept {
 }
 
 SampleReal AcousticReeds::evaluateLF(SampleReal phaseNormalized, SampleReal /*f0*/) noexcept {
-    // Continuous, bandlimited Liljencrants-Fant glottal flow derivative model
+    // True Fant (1985) Liljencrants-Fant glottal flow derivative model
     // phaseNormalized in [0.0, 1.0)
-    SampleReal Oq = std::clamp(params_.openQuotient + oqOffset_, 0.35, 0.85);
-    SampleReal Sq = std::clamp(params_.speedQuotient + sqOffset_, 1.2, 3.5);
+    SampleReal Oq = std::clamp(params_.openQuotient + oqOffset_, 0.40, 0.75);
+    SampleReal Sq = std::clamp(params_.speedQuotient + sqOffset_, 1.5, 3.0);
 
     SampleReal Te = Oq;
-    SampleReal Tp = Te * (Sq / (Sq + 1.0)); // Peak flow velocity instant
+    SampleReal Tp = Te * (Sq / (Sq + 1.0)); // Peak glottal flow instant
+    SampleReal Ta = std::clamp(params_.returnPhaseTa, 0.015, 0.08); // Return phase time constant ratio
 
-    if (phaseNormalized < Tp) {
-        // Phase 1: Opening acceleration (0 <= t < Tp)
-        // Smooth raised-cosine rise: zero derivative at t=0 and t=Tp
-        SampleReal u = phaseNormalized / Tp;
-        return 0.5 * (1.0 - std::cos(PI * u));
-    } else if (phaseNormalized < Te) {
-        // Phase 2: Closing deceleration (Tp <= t < Te)
-        // Transitions continuously from +1.0 down to -Ee at Te
-        SampleReal u = (phaseNormalized - Tp) / (Te - Tp);
-        SampleReal Ee = 1.0;
-        return std::cos(HALF_PI * u) - Ee * std::sin(HALF_PI * u);
+    if (phaseNormalized < Te) {
+        // Phase 1: Open glottal acceleration and deceleration up to GCI (Glottal Closure Instant)
+        // u'(t) = E0 * exp(alpha * t) * sin(omega_g * t)
+        SampleReal wg = PI / Tp;
+        SampleReal alpha = 0.85 / Tp;
+
+        SampleReal valTe = std::exp(alpha * Te) * std::sin(wg * Te);
+        SampleReal E0 = (std::abs(valTe) > 1e-5) ? (-1.0 / valTe) : -1.0;
+
+        return E0 * std::exp(alpha * phaseNormalized) * std::sin(wg * phaseNormalized);
     } else {
-        // Phase 3: Return relaxation phase (Te <= t < 1.0)
-        // Recovers smoothly from -Ee back to exactly 0.0 at t=1.0 with zero discontinuity
-        SampleReal v = (phaseNormalized - Te) / (1.0 - Te);
-        SampleReal Ee = 1.0;
-        return -Ee * std::cos(HALF_PI * v) * std::exp(-3.5 * v);
+        // Phase 2: Post-closure relaxation return phase
+        // Exponential decay from -1.0 back towards zero with time constant Ta
+        SampleReal delta = phaseNormalized - Te;
+        SampleReal decay = std::exp(-delta / Ta);
+        SampleReal endOffset = std::exp(-(1.0 - Te) / Ta);
+        return -(decay - endOffset);
     }
 }
 
@@ -105,11 +106,19 @@ Sample AcousticReeds::step(SampleReal subglottalDrive) noexcept {
                 params_.ventricularEngagement * ventPulse * 0.8;
     }
 
-    // Synchronous glottal aspiration noise (turbulent breathiness during open phase)
+    // Glottal fry / creak when F0 descends below 95 Hz (sentence-final cadence)
+    if (perturbedF0 < 95.0) {
+        SampleReal fryDepth = (95.0 - perturbedF0) / 30.0;
+        if (periodSampleCount_ % 2 == 1) {
+            dt *= (1.0 + 0.35 * std::min(1.0, fryDepth));
+        }
+    }
+
+    // Synchronous glottal aspiration noise (natural vocal warmth)
     SampleReal Oq = std::clamp(params_.openQuotient, 0.35, 0.85);
-    SampleReal aspirationMultiplier = (phase_ < Oq) ? std::sin(PI * (phase_ / Oq)) : 0.0;
+    SampleReal aspirationMultiplier = (phase_ < Oq) ? std::sin(PI * (phase_ / Oq)) : 0.04;
     if (params_.aspirationGain > 0.0001) {
-        SampleReal breathNoise = noiseGen_.nextGaussian() * (params_.aspirationGain * 0.08);
+        SampleReal breathNoise = noiseGen_.nextGaussian() * (params_.aspirationGain * 0.10);
         pulse += breathNoise * aspirationMultiplier;
     }
 

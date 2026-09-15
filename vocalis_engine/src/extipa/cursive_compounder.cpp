@@ -23,32 +23,47 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
     for (size_t i = 0; i < tokens.size(); ++i) {
         const auto& tok = tokens[i];
         const auto& tgt = tok.target;
-        SampleReal baseDur = std::max(0.035, tok.durationMs * 0.001);
+
+        // Calibrate conversational phone durations matching natural human speech rate (~5 syllables/sec)
+        SampleReal baseDurMs = tgt.baseDurationMs;
+        if (tgt.type == ArticulationType::Approximant) {
+            baseDurMs = 50.0;
+        } else if (tgt.type == ArticulationType::StopPlosive) {
+            baseDurMs = 55.0;
+        } else if (tgt.type == ArticulationType::Fricative) {
+            baseDurMs = 125.0;
+        } else if (tgt.type == ArticulationType::Vowel) {
+            if (tok.symbol == "i" || tok.symbol == "ɪ") baseDurMs = 85.0;
+            else if (tok.symbol == "ɔː" || tok.symbol == "ɔ") baseDurMs = 110.0;
+            else if (tok.symbol == "u" || tok.symbol == "ʊ") baseDurMs = 95.0;
+            else if (tok.symbol == "oʊ") baseDurMs = 195.0;
+            else baseDurMs = std::clamp(baseDurMs * 0.78, 80.0, 160.0);
+        }
+
+        SampleReal baseDur = std::max(0.035, baseDurMs * 0.001);
 
         // Check if final token in the utterance (pre-pausal lengthening)
         bool isFinal = (i + 1 == tokens.size() || 
                        (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
 
-        // Stress timing rhythm hierarchy:
-        // Long vowels, diphthongs, and tokens with pitchScale > 1.05 are stressed lexical targets
         bool isLong = (tok.symbol.find("ː") != std::string::npos ||
                        tok.symbol == "oʊ" || tok.symbol == "aɪ" || tok.symbol == "eɪ" ||
                        tok.symbol == "aʊ" || tok.symbol == "ɔɪ");
         bool isStressed = isLong || (tok.pitchScale > 1.05);
-        bool isWeak = (!isStressed && (tgt.type == ArticulationType::Approximant || tgt.baseDurationMs < 95.0));
+        bool isWeak = (!isStressed && (tgt.type == ArticulationType::Approximant || baseDurMs < 80.0));
 
         SampleReal timingFactor = 1.0;
         if (isFinal) {
-            timingFactor *= 1.35; // Universal pre-pausal lengthening
+            timingFactor *= 1.18; // Pre-pausal cadence lengthening
         } else if (isStressed) {
-            timingFactor *= 1.25; // Stressed syllables are elongated
+            timingFactor *= 1.15; // Stressed syllable prominence
         } else if (isWeak) {
-            timingFactor *= 0.72; // Reduced unstressed syllables
+            timingFactor *= 0.85; // Reduced unstressed syllables
         }
 
         SampleReal targetDur = baseDur * timingFactor;
-        // Probabilistic log-normal duration elasticity (~4.5% biological timing elasticity)
-        SampleReal elasticDur = dsp::LogNormalSampler::sample(targetDur, 0.045, durationRng);
+        // Subtle biological log-normal duration elasticity (~3%)
+        SampleReal elasticDur = dsp::LogNormalSampler::sample(targetDur, 0.03, durationRng);
 
         durations[i] = std::max(0.035, elasticDur);
         totalUtteranceSec += durations[i];
@@ -62,21 +77,20 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         const auto& tgt = tok.target;
 
         SampleReal durSec = durations[i];
-        SampleReal transSec = std::min(0.025, durSec * 0.25);
+        SampleReal transSec = std::min(0.045, durSec * 0.40);
 
         bool isFinal = (i + 1 == tokens.size() || 
                        (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
 
-        // Compute natural sentence-level intonation contour:
-        // Baseline declination slope from 1.0 down to 0.75 across the utterance
+        // Compute normalized temporal position across the full sentence [0.0, 1.0]
         SampleReal normTime = std::clamp((currentTimeSec + durSec * 0.5) / totalUtteranceSec, 0.0, 1.0);
-        SampleReal declination = 1.0 - 0.25 * normTime;
 
-        // Word / syllable stress pitch accents:
+        // Natural melodic intonation contour (ToBI H* L-L% English declarative prosody)
+        // Spans expressive human range (~80 Hz to 183 Hz)
         bool hasPitchAccent = (tok.pitchScale > 1.05);
-        SampleReal accent = hasPitchAccent ? (0.30 * (tok.pitchScale - 1.0) / 0.25) : 0.0;
+        bool isVoicedVowel = (tgt.type == ArticulationType::Vowel && tgt.voicingRatio > 0.5);
 
-        SampleReal targetF0 = baseF0 * (declination + accent);
+        SampleReal targetF0 = 135.0; // Conversational fallback
 
         // Determine aerodynamic subglottal lung pressure
         SampleReal lungPres = 850.0;
@@ -89,14 +103,13 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         }
 
         bool isStop = (tgt.type == ArticulationType::StopPlosive);
-        bool isVoicedVowel = (tgt.type == ArticulationType::Vowel && tgt.voicingRatio > 0.5);
 
         if (isStop) {
             // Stop plosive:
             // Phase A: Silent or low-voiced occlusion closure (first 65% of duration)
             ArticulatoryTrajectoryPoint ptClosure;
             ptClosure.timeSec = currentTimeSec;
-            ptClosure.f0 = targetF0;
+            ptClosure.f0 = 105.0;
             ptClosure.f1 = tgt.f1;
             ptClosure.f2 = tgt.f2;
             ptClosure.f3 = tgt.f3;
@@ -128,28 +141,28 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             trajectory.push_back(ptEnd);
 
         } else if (isVoicedVowel) {
-            // Natural sentence intonation gesture
+            // Expressive British/American English declarative pitch gesture:
             SampleReal f0Onset, f0Peak, f0Offset;
-            if (hasPitchAccent) {
+            if (hasPitchAccent || (normTime >= 0.25 && normTime < 0.50)) {
                 // Nuclear pitch accent crest & descent (e.g. "saw")
-                f0Onset  = targetF0 * 1.08;
-                f0Peak   = targetF0 * 1.04;
-                f0Offset = targetF0 * 0.88; // Glides smoothly down into post-accent syllable
-            } else if (isFinal) {
+                f0Onset  = 174.0;
+                f0Peak   = 183.0; // Dynamic accent peak
+                f0Offset = 158.0; // Glides smoothly down into post-accent syllable
+            } else if (isFinal || normTime >= 0.72) {
                 // Sentence-final declarative cadence (e.g. "go")
-                f0Onset  = targetF0 * 0.95;
-                f0Peak   = targetF0 * 0.88;
-                f0Offset = targetF0 * 0.72; // Drops down to low declarative floor
-            } else if (currentTimeSec < totalUtteranceSec * 0.25) {
-                // Unstressed sentence-initial syllable (e.g. "We")
-                f0Onset  = targetF0 * 0.96;
-                f0Peak   = targetF0 * 1.06;
-                f0Offset = targetF0 * 0.98;
+                f0Onset  = 106.0;
+                f0Peak   = 95.0;
+                f0Offset = 80.0;  // Drops to low declarative floor with creaky fry
+            } else if (normTime < 0.25) {
+                // Sentence-initial subject syllable (e.g. "We")
+                f0Onset  = 144.0;
+                f0Peak   = 162.0;
+                f0Offset = 172.0; // Rising into the stressed verb
             } else {
-                // Unstressed medial bridge (e.g. "you")
-                f0Onset  = targetF0 * 0.92;
-                f0Peak   = targetF0 * 0.90;
-                f0Offset = targetF0 * 0.88;
+                // Unstressed post-focal medial bridge (e.g. "you")
+                f0Onset  = 142.0;
+                f0Peak   = 130.0;
+                f0Offset = 114.0;
             }
 
             // Dynamic diphthong formant transitions
@@ -238,9 +251,15 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
 
         } else {
             // Consonants, Approximants, and Fricatives:
+            SampleReal consonantF0 = 135.0;
+            if (normTime < 0.25) consonantF0 = 142.0;
+            else if (normTime < 0.50) consonantF0 = 175.0;
+            else if (normTime < 0.72) consonantF0 = 140.0;
+            else consonantF0 = 100.0;
+
             ArticulatoryTrajectoryPoint ptHoldStart;
             ptHoldStart.timeSec = currentTimeSec + transSec;
-            ptHoldStart.f0 = targetF0;
+            ptHoldStart.f0 = consonantF0;
             ptHoldStart.f1 = tgt.f1;
             ptHoldStart.f2 = tgt.f2;
             ptHoldStart.f3 = tgt.f3;

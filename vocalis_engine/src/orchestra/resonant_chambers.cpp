@@ -58,12 +58,12 @@ void ResonantChambers::updateFilters() noexcept {
     for (size_t i = 0; i < MAX_FORMANTS; ++i) {
         SampleReal targetFreq = params_.formants[i].frequencyHz / scale;
         SampleReal targetBw = params_.formants[i].bandwidthHz * bandwidthDampingFactor;
-        formantFilters_[i].setResonator(targetFreq, targetBw, sampleRate_);
+        formantFilters_[i].setCascadeResonator(targetFreq, targetBw, sampleRate_);
     }
 
     // Nasal side-branch filters
     if (params_.velicAperture > 0.01) {
-        nasalPoleFilter_.setResonator(params_.nasalResonanceHz, 120.0 * bandwidthDampingFactor, sampleRate_);
+        nasalPoleFilter_.setCascadeResonator(params_.nasalResonanceHz, 120.0 * bandwidthDampingFactor, sampleRate_);
         nasalZeroFilter_.setAntiResonator(params_.nasalZeroHz, 180.0, sampleRate_);
     }
 
@@ -73,27 +73,29 @@ void ResonantChambers::updateFilters() noexcept {
 }
 
 Sample ResonantChambers::process(Sample excitation) noexcept {
-    Sample outSig = 0.0f;
+    Sample sig = excitation;
 
-    // Parallel formant filter bank with alternating phase cancellation for natural inter-formant valleys
+    // Klatt Cascade (Series) vocal tract filter bank:
+    // Glottal excitation passes sequentially through pharyngeal, oral, and head cavities:
+    // y[n] = R5(R4(R3(R2(R1(excitation)))))
     for (size_t i = 0; i < MAX_FORMANTS; ++i) {
-        Sample filtered = formantFilters_[i].process(excitation);
-        float phaseSign = (i % 2 == 0) ? 1.0f : -1.0f;
-        outSig += static_cast<Sample>(filtered * params_.formants[i].gainLinear * phaseSign);
+        if (params_.formants[i].frequencyHz > 50.0) {
+            sig = formantFilters_[i].process(sig);
+        }
     }
 
     // Nasal branch modulation
     if (params_.velicAperture > 0.01) {
         Sample nasalSig = nasalZeroFilter_.process(excitation);
         nasalSig = nasalPoleFilter_.process(nasalSig);
-        outSig = static_cast<Sample>((1.0 - 0.5 * params_.velicAperture) * outSig +
-                                      params_.velicAperture * nasalSig * 0.8f);
+        sig = static_cast<Sample>((1.0 - 0.5 * params_.velicAperture) * sig +
+                                  params_.velicAperture * nasalSig * 0.8f);
     }
 
     // Viscoelastic tissue damping
-    outSig = fleshinessFilter_.process(outSig);
+    sig = fleshinessFilter_.process(sig);
 
-    return outSig;
+    return sig;
 }
 
 void ResonantChambers::process(SampleSpan buffer) noexcept {

@@ -25,6 +25,23 @@ void Biquad::setResonator(SampleReal centerFreqHz, SampleReal bandwidthHz, uint3
     coeffs_.a2 = R * R;
 }
 
+void Biquad::setCascadeResonator(SampleReal centerFreqHz, SampleReal bandwidthHz, uint32_t sampleRate) noexcept {
+    if (sampleRate == 0) return;
+    SampleReal fs = static_cast<SampleReal>(sampleRate);
+    SampleReal nyquist = fs * 0.499;
+    centerFreqHz = std::clamp(centerFreqHz, 10.0, nyquist);
+    bandwidthHz = std::clamp(bandwidthHz, 10.0, fs * 0.5);
+
+    SampleReal R = std::exp(-PI * bandwidthHz / fs);
+    SampleReal theta = TWO_PI * centerFreqHz / fs;
+
+    coeffs_.a1 = -2.0 * R * std::cos(theta);
+    coeffs_.a2 = R * R;
+    coeffs_.b0 = 1.0 + coeffs_.a1 + coeffs_.a2; // Klatt unity DC normalization: H(1) = 1.0
+    coeffs_.b1 = 0.0;
+    coeffs_.b2 = 0.0;
+}
+
 void Biquad::setAntiResonator(SampleReal zeroFreqHz, SampleReal bandwidthHz, uint32_t sampleRate) noexcept {
     if (sampleRate == 0) return;
     SampleReal fs = static_cast<SampleReal>(sampleRate);
