@@ -16,10 +16,19 @@ from scipy import signal
 from typing import Tuple, Dict, Any, Optional, List, Union
 
 try:
+    import torch
+    from transformers import VitsModel, AutoTokenizer
+    LOCAL_VITS_AVAILABLE = True
+except ImportError:
+    LOCAL_VITS_AVAILABLE = False
+
+try:
     import edge_tts
     EDGE_TTS_AVAILABLE = True
 except ImportError:
     EDGE_TTS_AVAILABLE = False
+
+from .conlang_phonetics import prepare_conlang_utterance
 
 from .schema import ConlangScript, Syllable, PhonemeSegment, ExtIPAPhraseItem
 from .extipa_parser import parse_extipa_string, ExtIPAPhrase
@@ -75,47 +84,94 @@ def trim_silence(audio: np.ndarray, threshold: float = 0.005, pad_ms: float = 15
     return audio[start:end]
 
 
+_VITS_MODEL = None
+_VITS_TOKENIZER = None
+_VITS_DEVICE = None
+
+
+def get_vits_engine():
+    global _VITS_MODEL, _VITS_TOKENIZER, _VITS_DEVICE
+    if _VITS_MODEL is None and LOCAL_VITS_AVAILABLE:
+        _VITS_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+        model_id = "facebook/mms-tts-eng"
+        print(f"[NeuralSynthesizer] Loading local VITS model on {_VITS_DEVICE}...")
+        _VITS_TOKENIZER = AutoTokenizer.from_pretrained(model_id)
+        _VITS_MODEL = VitsModel.from_pretrained(model_id).to(_VITS_DEVICE)
+        print(f"[NeuralSynthesizer] Local VITS engine loaded successfully on {_VITS_DEVICE}.")
+    return _VITS_MODEL, _VITS_TOKENIZER, _VITS_DEVICE
+
+
 async def synthesize_neural_text_async(text: str, voice_id: str, pitch_hz_offset: float = 0.0, speed_rate: float = 1.0) -> np.ndarray:
-    """Renders phonetic text using Edge-TTS neural engine and returns float32 numpy audio at 44.1kHz."""
-    if not EDGE_TTS_AVAILABLE or not text.strip():
+    """Renders phonetic text using local VITS neural vocoder engine and returns float32 numpy audio at 44.1kHz."""
+    if not text.strip():
         return np.zeros(0, dtype=np.float32)
 
-    # Pitch offset clamped to natural human speaking range (-15Hz to +15Hz) to prevent Chipmunk helium sound
-    clamped_pitch = max(-15.0, min(15.0, pitch_hz_offset))
-    pitch_str = f"{int(clamped_pitch):+d}Hz" if clamped_pitch != 0 else "+0Hz"
+    # 1. Primary: 100% Offline Local Neural VITS Architecture
+    if LOCAL_VITS_AVAILABLE:
+        try:
+            model, tokenizer, device = get_vits_engine()
+            clean_text = prepare_conlang_utterance(text)
+            if not clean_text:
+                return np.zeros(0, dtype=np.float32)
 
-    # Speed rate offset
-    rate_pct = int(round((speed_rate - 1.0) * 100))
-    rate_str = f"{rate_pct:+d}%" if rate_pct != 0 else "+0%"
+            inputs = tokenizer(clean_text, return_tensors="pt").to(device)
 
-    communicate = edge_tts.Communicate(text=text, voice=voice_id, pitch=pitch_str, rate=rate_str)
+            # Configure rate and stochastic noise
+            model.speaking_rate = float(1.20 * speed_rate)
+            model.noise_scale = 0.667
+            model.noise_scale_duration = 0.8
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
-        tmp_path = tmp_file.name
+            def _infer():
+                with torch.no_grad():
+                    return model(**inputs).waveform[0].cpu().numpy()
 
-    try:
-        await communicate.save(tmp_path)
-        data, sr = sf.read(tmp_path, dtype="float32")
-        if len(data.shape) > 1:
-            data = data.mean(axis=1)
+            loop = asyncio.get_running_loop()
+            raw_audio = await loop.run_in_executor(None, _infer)
 
-        # Resample to 44.1kHz if needed
-        if sr != SAMPLE_RATE:
-            num_target = int(len(data) * (SAMPLE_RATE / sr))
-            data = signal.resample(data, num_target).astype(np.float32)
+            model_sr = model.config.sampling_rate
+            if model_sr != SAMPLE_RATE and len(raw_audio) > 0:
+                num_target = int(len(raw_audio) * (SAMPLE_RATE / model_sr))
+                data = signal.resample(raw_audio, num_target).astype(np.float32)
+            else:
+                data = raw_audio.astype(np.float32)
 
-        # Trim dead pre-roll/post-roll silence so words and cursive phrases connect seamlessly
-        trimmed_data = trim_silence(data, threshold=0.003, pad_ms=10.0)
-        return trimmed_data
-    except Exception as e:
-        print(f"[NeuralTTS Warning] {e}")
-        return np.zeros(0, dtype=np.float32)
-    finally:
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+            trimmed_data = trim_silence(data, threshold=0.003, pad_ms=10.0)
+            return trimmed_data
+        except Exception as e:
+            print(f"[Local VITS Error] {e}")
+
+    # 2. Fallback if local model is unavailable
+    if EDGE_TTS_AVAILABLE:
+        try:
+            clamped_pitch = max(-15.0, min(15.0, pitch_hz_offset))
+            pitch_str = f"{int(clamped_pitch):+d}Hz" if clamped_pitch != 0 else "+0Hz"
+            rate_pct = int(round((speed_rate - 1.0) * 100))
+            rate_str = f"{rate_pct:+d}%" if rate_pct != 0 else "+0%"
+
+            communicate = edge_tts.Communicate(text=text, voice=voice_id, pitch=pitch_str, rate=rate_str)
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+                tmp_path = tmp_file.name
+
+            await communicate.save(tmp_path)
+            data, sr = sf.read(tmp_path, dtype="float32")
+            if len(data.shape) > 1:
+                data = data.mean(axis=1)
+
+            if sr != SAMPLE_RATE:
+                num_target = int(len(data) * (SAMPLE_RATE / sr))
+                data = signal.resample(data, num_target).astype(np.float32)
+
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+
+            return trim_silence(data, threshold=0.003, pad_ms=10.0)
+        except Exception as e:
+            print(f"[Edge-TTS Fallback Warning] {e}")
+
+    return np.zeros(0, dtype=np.float32)
 
 
 def apply_bioacoustic_phonation_modifier(
