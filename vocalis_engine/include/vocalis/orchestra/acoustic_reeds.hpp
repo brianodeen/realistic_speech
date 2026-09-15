@@ -9,12 +9,12 @@ namespace vocalis::orchestra {
 
 struct GlottalParams {
     SampleReal f0Hz{120.0};
-    SampleReal openQuotient{0.6};       // Oq: 0.3 (pressed) to 0.85 (breathy)
-    SampleReal speedQuotient{2.0};      // Sq: opening / closing time ratio
-    SampleReal jitterPercent{0.5};      // Micro pitch perturbation
-    SampleReal shimmerPercent{1.0};     // Micro amplitude perturbation
-    SampleReal aspirationGain{0.03};    // Glottal turbulent breathiness
-    SampleReal returnPhaseTa{0.022};    // Normalized return phase time constant (Ta) for high-frequency presence
+    SampleReal openQuotient{0.66};      // Oq: 0.66 = relaxed, natural conversational modal voice
+    SampleReal speedQuotient{1.8};      // Sq: 1.8 = relaxed vocal fold closure slope
+    SampleReal jitterPercent{0.4};      // Micro pitch perturbation
+    SampleReal shimmerPercent{0.8};     // Micro amplitude perturbation
+    SampleReal aspirationGain{0.035};   // Glottal turbulent breathiness
+    SampleReal returnPhaseTa{0.055};    // Normalized return phase time constant (Ta) for unstrained warm timbre
 
     // Ventricular / False folds
     SampleReal ventricularEngagement{0.0}; // 0.0 to 1.0

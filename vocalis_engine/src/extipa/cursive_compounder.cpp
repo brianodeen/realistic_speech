@@ -24,23 +24,23 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         const auto& tok = tokens[i];
         const auto& tgt = tok.target;
 
-        // Calibrate conversational phone durations matching natural human speech rate (~5 syllables/sec)
+        // Calibrate conversational phone durations matching natural human speech rate (~4.5 syllables/sec)
         SampleReal baseDurMs = tgt.baseDurationMs;
         if (tgt.type == ArticulationType::Approximant) {
-            baseDurMs = 50.0;
+            baseDurMs = (tok.symbol == "j") ? 65.0 : 60.0;
         } else if (tgt.type == ArticulationType::StopPlosive) {
-            baseDurMs = 55.0;
+            baseDurMs = 60.0;
         } else if (tgt.type == ArticulationType::Fricative) {
-            baseDurMs = 125.0;
+            baseDurMs = 130.0;
         } else if (tgt.type == ArticulationType::Vowel) {
-            if (tok.symbol == "i" || tok.symbol == "ɪ") baseDurMs = 85.0;
-            else if (tok.symbol == "ɔː" || tok.symbol == "ɔ") baseDurMs = 110.0;
-            else if (tok.symbol == "u" || tok.symbol == "ʊ") baseDurMs = 95.0;
-            else if (tok.symbol == "oʊ") baseDurMs = 195.0;
-            else baseDurMs = std::clamp(baseDurMs * 0.78, 80.0, 160.0);
+            if (tok.symbol == "i" || tok.symbol == "ɪ") baseDurMs = 110.0;
+            else if (tok.symbol == "ɔː" || tok.symbol == "ɔ") baseDurMs = 130.0;
+            else if (tok.symbol == "u" || tok.symbol == "uː" || tok.symbol == "ʊ") baseDurMs = 150.0;
+            else if (tok.symbol == "oʊ") baseDurMs = 220.0;
+            else baseDurMs = std::clamp(baseDurMs * 0.90, 100.0, 180.0);
         }
 
-        SampleReal baseDur = std::max(0.035, baseDurMs * 0.001);
+        SampleReal baseDur = std::max(0.040, baseDurMs * 0.001);
 
         // Check if final token in the utterance (pre-pausal lengthening)
         bool isFinal = (i + 1 == tokens.size() || 
@@ -48,24 +48,21 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
 
         bool isLong = (tok.symbol.find("ː") != std::string::npos ||
                        tok.symbol == "oʊ" || tok.symbol == "aɪ" || tok.symbol == "eɪ" ||
-                       tok.symbol == "aʊ" || tok.symbol == "ɔɪ");
+                       tok.symbol == "aʊ" || tok.symbol == "ɔɪ" || tok.symbol == "u");
         bool isStressed = isLong || (tok.pitchScale > 1.05);
-        bool isWeak = (!isStressed && (tgt.type == ArticulationType::Approximant || baseDurMs < 80.0));
 
         SampleReal timingFactor = 1.0;
         if (isFinal) {
-            timingFactor *= 1.18; // Pre-pausal cadence lengthening
+            timingFactor *= 1.15; // Pre-pausal cadence lengthening
         } else if (isStressed) {
-            timingFactor *= 1.15; // Stressed syllable prominence
-        } else if (isWeak) {
-            timingFactor *= 0.85; // Reduced unstressed syllables
+            timingFactor *= 1.10; // Stressed syllable prominence
         }
 
         SampleReal targetDur = baseDur * timingFactor;
-        // Subtle biological log-normal duration elasticity (~3%)
-        SampleReal elasticDur = dsp::LogNormalSampler::sample(targetDur, 0.03, durationRng);
+        // Subtle biological log-normal duration elasticity (~2.5%)
+        SampleReal elasticDur = dsp::LogNormalSampler::sample(targetDur, 0.025, durationRng);
 
-        durations[i] = std::max(0.035, elasticDur);
+        durations[i] = std::max(0.040, elasticDur);
         totalUtteranceSec += durations[i];
     }
     if (totalUtteranceSec < 0.1) totalUtteranceSec = 0.1;
@@ -77,7 +74,7 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         const auto& tgt = tok.target;
 
         SampleReal durSec = durations[i];
-        SampleReal transSec = std::min(0.045, durSec * 0.40);
+        SampleReal transSec = std::min(0.045, durSec * 0.35);
 
         bool isFinal = (i + 1 == tokens.size() || 
                        (i + 2 == tokens.size() && tokens.back().target.type == ArticulationType::Silence));
@@ -90,16 +87,14 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         bool hasPitchAccent = (tok.pitchScale > 1.05);
         bool isVoicedVowel = (tgt.type == ArticulationType::Vowel && tgt.voicingRatio > 0.5);
 
-        SampleReal targetF0 = 135.0; // Conversational fallback
-
-        // Determine aerodynamic subglottal lung pressure
-        SampleReal lungPres = 850.0;
+        // Relaxed, comfortable conversational subglottal pressure (eliminates vocal strain)
+        SampleReal lungPres = 720.0;
         if (tgt.type == ArticulationType::Silence) {
             lungPres = 0.0;
         } else if (tok.isGlottalStop) {
             lungPres = 0.0;
         } else if (tgt.voicingRatio < 0.2) {
-            lungPres = 950.0; // Higher aerodynamic head for turbulent fricatives
+            lungPres = 820.0; // Controlled aerodynamic head for turbulent fricatives
         }
 
         bool isStop = (tgt.type == ArticulationType::StopPlosive);
@@ -115,7 +110,7 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             ptClosure.f3 = tgt.f3;
             ptClosure.f4 = tgt.f4;
             ptClosure.f5 = tgt.f5;
-            ptClosure.lungPressurePa = (tgt.voicingRatio > 0.3) ? 400.0 : 0.0;
+            ptClosure.lungPressurePa = (tgt.voicingRatio > 0.3) ? 380.0 : 0.0;
             ptClosure.constrictionAperture = 0.0; // Closed occlusion
             ptClosure.noiseCenterFreq = tgt.noiseCenterFreq;
             ptClosure.noiseBandwidth = tgt.noiseBandwidth;
@@ -129,7 +124,7 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             SampleReal releaseTime = currentTimeSec + durSec * 0.65;
             ArticulatoryTrajectoryPoint ptBurst = ptClosure;
             ptBurst.timeSec = releaseTime;
-            ptBurst.lungPressurePa = 900.0;
+            ptBurst.lungPressurePa = 780.0;
             ptBurst.constrictionAperture = 25.0; // Rapid opening release
             ptBurst.clickFrequencyHz = tgt.noiseCenterFreq; // Triggers plosive transient pop
             trajectory.push_back(ptBurst);
@@ -143,26 +138,27 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         } else if (isVoicedVowel) {
             // Expressive British/American English declarative pitch gesture:
             SampleReal f0Onset, f0Peak, f0Offset;
-            if (hasPitchAccent || (normTime >= 0.25 && normTime < 0.50)) {
+            if (hasPitchAccent || (normTime >= 0.18 && normTime < 0.46)) {
                 // Nuclear pitch accent crest & descent (e.g. "saw")
                 f0Onset  = 174.0;
                 f0Peak   = 183.0; // Dynamic accent peak
                 f0Offset = 158.0; // Glides smoothly down into post-accent syllable
-            } else if (isFinal || normTime >= 0.72) {
+            } else if (isFinal || normTime >= 0.68) {
                 // Sentence-final declarative cadence (e.g. "go")
-                f0Onset  = 106.0;
+                f0Onset  = 108.0;
                 f0Peak   = 95.0;
                 f0Offset = 80.0;  // Drops to low declarative floor with creaky fry
-            } else if (normTime < 0.25) {
+            } else if (normTime < 0.18) {
                 // Sentence-initial subject syllable (e.g. "We")
                 f0Onset  = 144.0;
                 f0Peak   = 162.0;
                 f0Offset = 172.0; // Rising into the stressed verb
             } else {
-                // Unstressed post-focal medial bridge (e.g. "you")
-                f0Onset  = 142.0;
-                f0Peak   = 130.0;
-                f0Offset = 114.0;
+                // Post-focal medial bridge (e.g. "you")
+                // Full melodic glide connecting "saw" down to "go"
+                f0Onset  = 154.0;
+                f0Peak   = 140.0;
+                f0Offset = 122.0;
             }
 
             // Dynamic diphthong formant transitions
@@ -178,8 +174,19 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
 
             if (tok.symbol == "oʊ") {
                 // [o] -> [ʊ] diphthong glide (e.g. "go")
-                f1Onset = 480.0; f2Onset = 980.0;  f3Onset = 2300.0; lipOnset = 0.8;
-                f1Offset = 400.0; f2Offset = 850.0; f3Offset = 2200.0; lipOffset = 1.6;
+                f1Onset = 500.0; f2Onset = 1050.0; f3Onset = 2400.0; lipOnset = 0.6;
+                f1Offset = 420.0; f2Offset = 880.0;  f3Offset = 2250.0; lipOffset = 1.4;
+            } else if (tok.symbol == "u" || tok.symbol == "uː") {
+                // Fronted/centralized [ʉː] in conversational English (e.g. "you"):
+                // Coarticulated from palatal glide [j] (F2 ~ 2100 Hz) down to central-high [ʉ] (F2 ~ 1600 Hz)
+                f1Onset = 320.0; f2Onset = 1850.0; f3Onset = 2450.0; lipOnset = 0.4;
+                f1Offset = 340.0; f2Offset = 1550.0; f3Offset = 2350.0; lipOffset = 0.9;
+            } else if (tok.symbol == "i" || tok.symbol == "iː") {
+                f1Onset = 300.0; f2Onset = 2100.0; f3Onset = 2850.0; lipOnset = 0.0;
+                f1Offset = 280.0; f2Offset = 2250.0; f3Offset = 2950.0; lipOnset = 0.0;
+            } else if (tok.symbol == "ɔː" || tok.symbol == "ɔ") {
+                f1Onset = 620.0; f2Onset = 1100.0; f3Onset = 2500.0; lipOnset = 0.5;
+                f1Offset = 560.0; f2Offset = 1000.0; f3Offset = 2450.0; lipOffset = 0.8;
             } else if (tok.symbol == "aɪ") {
                 // [a] -> [ɪ]
                 f1Onset = 750.0; f2Onset = 1250.0; f3Onset = 2500.0;

@@ -5,14 +5,16 @@ namespace vocalis::voice {
 SpeakerProfile SpeakerProfile::createHumanMale() {
     SpeakerProfile p;
     p.name = "HumanMale";
-    p.bellows.lungPressurePa = 850.0;
-    p.reeds.f0Hz = 115.0;
-    p.reeds.openQuotient = 0.58;
-    p.reeds.speedQuotient = 2.2;
-    p.reeds.jitterPercent = 0.4;
-    p.reeds.shimmerPercent = 0.8;
+    p.bellows.lungPressurePa = 720.0; // Comfortable conversational subglottal pressure (unstrained)
+    p.reeds.f0Hz = 135.0;
+    p.reeds.openQuotient = 0.66;
+    p.reeds.speedQuotient = 1.8;
+    p.reeds.returnPhaseTa = 0.055;
+    p.reeds.jitterPercent = 0.35;
+    p.reeds.shimmerPercent = 0.7;
+    p.reeds.aspirationGain = 0.035;
     p.tract.vocalTractLengthScale = 1.0;
-    p.tract.fleshinessDamping = 0.35;
+    p.tract.fleshinessDamping = 0.30;
     return p;
 }
 
