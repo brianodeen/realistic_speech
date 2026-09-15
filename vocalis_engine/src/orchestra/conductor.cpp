@@ -71,6 +71,17 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
     chambers_.reset();
     bell_.reset();
 
+    if (!trajectory.empty()) {
+        const auto& pInit = trajectory.front();
+        ouF0_.reset(pInit.f0);
+        ouF1_.reset(pInit.f1);
+        ouF2_.reset(pInit.f2);
+        ouF3_.reset(pInit.f3);
+        ouF4_.reset(pInit.f4);
+        ouF5_.reset(pInit.f5);
+        ouPressure_.reset(pInit.lungPressurePa);
+    }
+
     while (sampleIndex < totalSamples) {
         size_t blockEnd = std::min(totalSamples, sampleIndex + controlBlockSize);
         SampleReal blockCurrentTime = static_cast<SampleReal>(sampleIndex) * dt;
@@ -88,13 +99,25 @@ AudioBuffer Conductor::synthesizeTrajectory(const std::vector<extipa::Articulato
         SampleReal w = smootherstep(tNorm);
 
         // Control-rate C2 Hermite Smootherstep parameter interpolation
-        SampleReal currentF0 = interpolate_smootherstep(p0.f0, p1.f0, w);
-        SampleReal currentF1 = interpolate_smootherstep(p0.f1, p1.f1, w);
-        SampleReal currentF2 = interpolate_smootherstep(p0.f2, p1.f2, w);
-        SampleReal currentF3 = interpolate_smootherstep(p0.f3, p1.f3, w);
-        SampleReal currentF4 = interpolate_smootherstep(p0.f4, p1.f4, w);
-        SampleReal currentF5 = interpolate_smootherstep(p0.f5, p1.f5, w);
-        SampleReal currentPressure = interpolate_smootherstep(p0.lungPressurePa, p1.lungPressurePa, w);
+        SampleReal targetF0 = interpolate_smootherstep(p0.f0, p1.f0, w);
+        SampleReal targetF1 = interpolate_smootherstep(p0.f1, p1.f1, w);
+        SampleReal targetF2 = interpolate_smootherstep(p0.f2, p1.f2, w);
+        SampleReal targetF3 = interpolate_smootherstep(p0.f3, p1.f3, w);
+        SampleReal targetF4 = interpolate_smootherstep(p0.f4, p1.f4, w);
+        SampleReal targetF5 = interpolate_smootherstep(p0.f5, p1.f5, w);
+        SampleReal targetPressure = interpolate_smootherstep(p0.lungPressurePa, p1.lungPressurePa, w);
+
+        SampleReal blockDt = static_cast<SampleReal>(blockEnd - sampleIndex) * dt;
+
+        // Continuous stochastic Ornstein-Uhlenbeck (OU) SDE integration
+        SampleReal currentF0 = ouF0_.step(targetF0, blockDt, stochasticRng_);
+        SampleReal currentF1 = ouF1_.step(targetF1, blockDt, stochasticRng_);
+        SampleReal currentF2 = ouF2_.step(targetF2, blockDt, stochasticRng_);
+        SampleReal currentF3 = ouF3_.step(targetF3, blockDt, stochasticRng_);
+        SampleReal currentF4 = ouF4_.step(targetF4, blockDt, stochasticRng_);
+        SampleReal currentF5 = ouF5_.step(targetF5, blockDt, stochasticRng_);
+        SampleReal currentPressure = ouPressure_.step(targetPressure, blockDt, stochasticRng_);
+
         SampleReal currentAperture = interpolate_smootherstep(p0.constrictionAperture, p1.constrictionAperture, w);
         SampleReal currentVelic = interpolate_smootherstep(p0.velicAperture, p1.velicAperture, w);
         SampleReal currentVoicing = interpolate_smootherstep(p0.voicingRatio, p1.voicingRatio, w);

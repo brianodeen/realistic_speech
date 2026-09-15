@@ -78,12 +78,48 @@ void testNoiseGenerator() {
     std::cout << "  -> PASS: Noise generator outputs zero-mean uniform white noise.\n";
 }
 
+void testOrnsteinUhlenbeckSDE() {
+    std::cout << "[TEST] Running testOrnsteinUhlenbeckSDE...\n";
+    dsp::NoiseGenerator rng(42);
+    dsp::OrnsteinUhlenbeckProcess ou(30.0, 5.0, 100.0);
+    SampleReal dt = 0.001; // 1 ms control step
+    SampleReal target = 500.0;
+
+    // Advance 500 steps (0.5s)
+    for (int i = 0; i < 500; ++i) {
+        SampleReal val = ou.step(target, dt, rng);
+        assert(!std::isnan(val) && !std::isinf(val));
+    }
+    // After 0.5s (tau ~ 0.033s), state must have converged near target (within 3 stddevs ~ 15 Hz)
+    assert(std::abs(ou.state() - target) < 25.0);
+    std::cout << "  -> PASS: Ornstein-Uhlenbeck SDE converges stably with bounded biological variance.\n";
+}
+
+void testAutoregressiveDrift() {
+    std::cout << "[TEST] Running testAutoregressiveDrift...\n";
+    dsp::NoiseGenerator rng(99);
+    dsp::AutoregressiveDrift ar(0.85, 0.05);
+    double sum = 0.0;
+    const int N = 2000;
+    for (int i = 0; i < N; ++i) {
+        SampleReal val = ar.step(rng);
+        assert(!std::isnan(val) && !std::isinf(val));
+        assert(std::abs(val) < 1.0);
+        sum += val;
+    }
+    double mean = sum / N;
+    assert(std::abs(mean) < 0.1);
+    std::cout << "  -> PASS: AR(1) Brownian drift generates bounded correlated random walk.\n";
+}
+
 int main() {
     std::cout << "=== VocalisEngine DSP Test Suite ===\n";
     testSmootherstep();
     testBiquadStability();
     testPolyBlep();
     testNoiseGenerator();
+    testOrnsteinUhlenbeckSDE();
+    testAutoregressiveDrift();
     std::cout << "=== All DSP Tests PASSED! ===\n";
     return 0;
 }

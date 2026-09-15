@@ -3,6 +3,7 @@
 #include "vocalis/types.hpp"
 #include "vocalis/dsp/blit_blep.hpp"
 #include "vocalis/dsp/noise_generator.hpp"
+#include "vocalis/dsp/stochastic_process.hpp"
 
 namespace vocalis::orchestra {
 
@@ -68,7 +69,11 @@ private:
     SampleReal syrinxLeftPhase_{0.0};   // Avian left syrinx phase [0, 1)
     SampleReal syrinxRightPhase_{0.0};  // Avian right syrinx phase [0, 1)
 
-    // Stochastic and filter state
+    // Stochastic Brownian pulse morphing and filter state
+    dsp::AutoregressiveDrift oqDrift_{0.88, 0.025};
+    dsp::AutoregressiveDrift sqDrift_{0.88, 0.08};
+    SampleReal oqOffset_{0.0};
+    SampleReal sqOffset_{0.0};
     SampleReal currentJitterOffset_{0.0};
     SampleReal currentShimmerFactor_{1.0};
     SampleReal tiltState_{0.0};

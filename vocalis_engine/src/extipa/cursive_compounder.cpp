@@ -1,4 +1,5 @@
 #include "vocalis/extipa/cursive_compounder.hpp"
+#include "vocalis/dsp/stochastic_process.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -14,9 +15,10 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
         return trajectory;
     }
 
-    // First pass: Calculate token durations with stress timing & pre-pausal lengthening
+    // First pass: Calculate token durations with stress timing & probabilistic log-normal elasticity
     std::vector<SampleReal> durations(tokens.size(), 0.0);
     SampleReal totalUtteranceSec = 0.0;
+    dsp::NoiseGenerator durationRng(0xC0FFEE12345678ULL);
 
     for (size_t i = 0; i < tokens.size(); ++i) {
         const auto& tok = tokens[i];
@@ -44,7 +46,11 @@ std::vector<ArticulatoryTrajectoryPoint> CursiveCompounder::compound(
             timingFactor *= 0.72; // Reduced unstressed syllables
         }
 
-        durations[i] = baseDur * timingFactor;
+        SampleReal targetDur = baseDur * timingFactor;
+        // Probabilistic log-normal duration elasticity (~4.5% biological timing elasticity)
+        SampleReal elasticDur = dsp::LogNormalSampler::sample(targetDur, 0.045, durationRng);
+
+        durations[i] = std::max(0.035, elasticDur);
         totalUtteranceSec += durations[i];
     }
     if (totalUtteranceSec < 0.1) totalUtteranceSec = 0.1;

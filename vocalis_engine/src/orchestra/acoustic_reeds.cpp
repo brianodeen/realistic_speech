@@ -14,6 +14,10 @@ void AcousticReeds::reset() noexcept {
     ventricularPhase_ = 0.0;
     syrinxLeftPhase_ = 0.0;
     syrinxRightPhase_ = 0.0;
+    oqDrift_.reset(0.0);
+    sqDrift_.reset(0.0);
+    oqOffset_ = 0.0;
+    sqOffset_ = 0.0;
     currentJitterOffset_ = 0.0;
     currentShimmerFactor_ = 1.0;
     tiltState_ = 0.0;
@@ -23,8 +27,8 @@ void AcousticReeds::reset() noexcept {
 SampleReal AcousticReeds::evaluateLF(SampleReal phaseNormalized, SampleReal /*f0*/) noexcept {
     // Continuous, bandlimited Liljencrants-Fant glottal flow derivative model
     // phaseNormalized in [0.0, 1.0)
-    SampleReal Oq = std::clamp(params_.openQuotient, 0.35, 0.85);
-    SampleReal Sq = std::clamp(params_.speedQuotient, 1.2, 3.5);
+    SampleReal Oq = std::clamp(params_.openQuotient + oqOffset_, 0.35, 0.85);
+    SampleReal Sq = std::clamp(params_.speedQuotient + sqOffset_, 1.2, 3.5);
 
     SampleReal Te = Oq;
     SampleReal Tp = Te * (Sq / (Sq + 1.0)); // Peak flow velocity instant
@@ -119,6 +123,10 @@ Sample AcousticReeds::step(SampleReal subglottalDrive) noexcept {
     phase_ += dt;
     if (phase_ >= 1.0) {
         phase_ -= 1.0;
+        // Update cycle-by-cycle stochastic Brownian pulse morphing
+        oqOffset_ = oqDrift_.step(noiseGen_);
+        sqOffset_ = sqDrift_.step(noiseGen_);
+
         // Update cycle-by-cycle jitter & shimmer micro-perturbations
         SampleReal jitterStdDev = (params_.jitterPercent * 0.01);
         currentJitterOffset_ = noiseGen_.nextGaussian() * jitterStdDev;

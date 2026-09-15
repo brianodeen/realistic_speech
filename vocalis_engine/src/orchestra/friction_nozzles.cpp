@@ -41,14 +41,18 @@ Sample FrictionNozzles::step(SampleReal airflowDrive) noexcept {
         Sample rawNoise = noiseGen_.nextWhite();
         Sample filteredNoise = bandpassFilter_.process(rawNoise);
 
-        // Reynolds vortex shedding (mucosal flutter / rasping modulation)
+        // Stochastic Reynolds vortex shedding (aerodynamic turbulence flutter)
+        Sample pinkFlutter = noiseGen_.nextPink();
+        SampleReal flutterMod = 1.0 + 0.18 * static_cast<SampleReal>(pinkFlutter);
+
+        // Reynolds mucosal flutter / rasping modulation
         if (params_.vortexSheddingRate > 0.01) {
             Sample raspNoise = raspFilter_.process(noiseGen_.nextWhite());
             filteredNoise = filteredNoise * 0.8f + raspNoise * static_cast<Sample>(params_.vortexSheddingRate * 0.3);
         }
 
         SampleReal apertureGain = (25.0 - params_.apertureMm2) / 25.0;
-        turbulence = filteredNoise * flowVelocity * apertureGain * 0.4;
+        turbulence = filteredNoise * flowVelocity * apertureGain * flutterMod * 0.4;
     }
 
     // Process plosive release transient burst (bandlimited through vocal tract nozzle bandpass)

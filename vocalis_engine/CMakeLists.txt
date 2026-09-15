@@ -17,6 +17,7 @@ add_library(vocalis_core STATIC
     src/dsp/biquad.cpp
     src/dsp/spline_interpolator.cpp
     src/dsp/noise_generator.cpp
+    src/dsp/stochastic_process.cpp
     src/orchestra/air_bellows.cpp
     src/orchestra/acoustic_reeds.cpp
     src/orchestra/friction_nozzles.cpp
