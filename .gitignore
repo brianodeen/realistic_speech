@@ -36,6 +36,7 @@ env.bak/
 venv.bak/
 
 # Audio outputs & caches
+output/
 *.wav
 *.mp3
 !backend/presets/*.wav
